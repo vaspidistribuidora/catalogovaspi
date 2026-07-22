@@ -1,0 +1,2887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Vaspi Catálogo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyApBVLKgpwz75KOh7Sr7b3SWRjy1O0PVts",
+    authDomain: "catalogotestevaspi.firebaseapp.com",
+    projectId: "catalogotestevaspi",
+    storageBucket: "catalogotestevaspi.firebasestorage.app",
+    messagingSenderId: "537821265721",
+    appId: "1:537821265721:web:94e4c2523b6e4e184b32e8",
+    measurementId: "G-ZY10L9ZT29"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Expõe funções globais para o resto do código
+  window._fbGetItems = async () => {
+    try {
+      const snap = await getDoc(doc(db, "catalogo", "produtos"));
+      if (snap.exists()) return snap.data().items || [];
+      return [];
+    } catch(e) { console.error("Firebase read error:", e); return []; }
+  };
+
+  window._fbSetItems = async (items) => {
+    try {
+      await setDoc(doc(db, "catalogo", "produtos"), { items, updatedAt: new Date().toISOString() });
+      return true;
+    } catch(e) { console.error("Firebase write error:", e); return false; }
+  };
+
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event("firebase-ready"));
+</script>
+<style>
+:root{
+--red:#C8102E;--red-d:#a00d25;--red-l:rgba(200,16,46,.1);
+--bg:#F0F0F0;--surf:#fff;--surf2:#F5F5F5;--surf3:#EBEBEB;
+--brd:#DEDEDE;--brd2:#C0C0C0;
+--txt:#1C1C1C;--txt2:#555;--txt3:#999;
+--grn:#1a7a35;--grn-bg:#eef7f0;
+--warn:#d17200;--warn-bg:#fff7ed;
+--info:#0066cc;--info-bg:#eef4ff;
+--r:6px;--sh:0 1px 3px rgba(0,0,0,.09);--sh2:0 4px 20px rgba(0,0,0,.14);
+--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;
+--sw:220px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--fb);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;display:flex}
+img{display:block;max-width:100%}
+button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
+input,select,textarea{font-family:inherit;color:var(--txt)}
+a{color:inherit;text-decoration:none}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--surf2)}
+::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
+
+/* ── LOADING OVERLAY ── */
+#loadingOverlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:14px}
+.load-logo{font-family:var(--fd);font-size:42px;color:var(--red);letter-spacing:2px}
+.load-msg{font-size:12px;color:var(--txt3);letter-spacing:1px}
+.load-spin{width:28px;height:28px;border:3px solid var(--brd);border-top-color:var(--red);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── LOCK ── */
+#lockScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;display:none}
+.lock-box{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:36px 32px;max-width:360px;width:100%;box-shadow:var(--sh2);text-align:center}
+.lock-logo{font-family:var(--fd);font-size:36px;color:var(--red);letter-spacing:1px;margin-bottom:4px}
+.lock-sub{font-size:11px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:24px}
+.lock-box label{display:block;text-align:left;font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px}
+.lock-input{width:100%;border:1.5px solid var(--brd);border-radius:var(--r);padding:9px 12px;font-size:14px;outline:none;transition:border-color .15s}
+.lock-input:focus{border-color:var(--red)}
+.lock-err{font-size:12px;color:var(--red);margin-top:6px;height:16px}
+.lock-btn{width:100%;margin-top:14px;background:var(--red);color:#fff;font-family:var(--fb);font-weight:700;font-size:14px;padding:10px;border-radius:var(--r);border:none;cursor:pointer;transition:background .12s}
+.lock-btn:hover{background:var(--red-d)}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);background:var(--surf);border-right:1.5px solid var(--brd);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:20;overflow-y:auto;transition:transform .2s}
+.sb-logo{padding:16px 14px 14px;border-bottom:1.5px solid var(--brd);display:flex;align-items:center;gap:8px}
+.sb-logo-mark{font-family:var(--fd);font-size:22px;color:var(--red);letter-spacing:1px;line-height:1}
+.sb-logo-text{font-size:10px;color:var(--txt3);letter-spacing:1px;text-transform:uppercase;line-height:1.4}
+.sb-nav{padding:8px 6px;flex:1}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);font-size:12px;font-weight:500;color:var(--txt2);cursor:pointer;transition:all .1s;width:100%;text-align:left;border:none;background:none;font-family:var(--fb)}
+.nav-item:hover{background:var(--surf2);color:var(--txt)}
+.nav-item.on{background:var(--red-l);color:var(--red);font-weight:700}
+.nav-item .badge{margin-left:auto;background:var(--warn);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px}
+.sb-footer{padding:12px;border-top:1.5px solid var(--brd)}
+.sb-link{display:block;text-align:center;background:var(--red);color:#fff;font-family:var(--fb);font-weight:700;font-size:12px;padding:8px;border-radius:var(--r);transition:background .12s}
+.sb-link:hover{background:var(--red-d)}
+
+/* ── MAIN ── */
+.app-main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh;max-height:100vh;overflow-y:auto}
+.ph{background:var(--surf);border-bottom:1.5px solid var(--brd);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:10}
+.ph h2{font-family:var(--fd);font-size:24px;color:var(--txt);letter-spacing:.5px}
+.ph-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.panel{display:none;padding:18px 20px;flex:1}
+.panel.on{display:block}
+
+/* Firebase sync status */
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.sync-ok{background:var(--grn-bg);color:var(--grn);border:1px solid rgba(26,122,53,.3)}
+.sync-saving{background:var(--warn-bg);color:var(--warn);border:1px solid #f0b040}
+.sync-err{background:rgba(200,16,46,.08);color:var(--red);border:1px solid rgba(200,16,46,.3)}
+.sync-local{background:rgba(153,102,255,.08);color:#6b3fcc;border:1px solid rgba(153,102,255,.3)}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--r);font-size:12px;font-weight:600;font-family:var(--fb);cursor:pointer;border:none;transition:filter .12s,opacity .12s}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover:not(:disabled){background:var(--red-d)}
+.btn-ghost{background:var(--surf2);color:var(--txt2);border:1.5px solid var(--brd)}
+.btn-ghost:hover{background:var(--surf3)}
+.btn-danger{background:rgba(200,16,46,.1);color:var(--red);border:1.5px solid rgba(200,16,46,.3)}
+.btn-danger:hover{background:rgba(200,16,46,.18)}
+.btn-grn{background:rgba(26,122,53,.12);color:var(--grn);border:1.5px solid rgba(26,122,53,.3)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-xs{padding:3px 7px;font-size:10px}
+
+/* ── STATS ── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.stat{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:14px}
+.stat-n{font-family:var(--fd);font-size:34px;color:var(--red);line-height:1}
+.stat-l{font-size:11px;color:var(--txt3);margin-top:3px}
+
+/* ── IMPORT ZONE ── */
+.dropzone{background:var(--surf);border:2px dashed var(--brd2);border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:16px}
+.dropzone:hover,.dropzone.drag{border-color:var(--red);background:var(--red-l)}
+.dropzone h3{font-family:var(--fd);font-size:22px;margin:10px 0 5px;color:var(--txt)}
+.dropzone p{font-size:12px;color:var(--txt3);margin-bottom:12px}
+code{background:var(--surf2);padding:1px 6px;border-radius:3px;font-size:11px;border:1px solid var(--brd)}
+#fileInput{display:none}
+
+.tag-toggle{font-size:14px;line-height:1;padding:2px 5px;border-radius:4px;cursor:pointer;border:1px solid var(--brd);background:var(--surf2);transition:all .1s;display:inline-block}
+.tag-toggle:hover{border-color:var(--brd2);background:var(--surf3)}
+.tag-on-promo{background:var(--grn-bg);border-color:rgba(26,122,53,.4)}
+.tag-on-novo{background:#eef4ff;border-color:rgba(0,85,170,.3)}
+.tag-on-top{background:#fef9ec;border-color:rgba(184,134,11,.4)}
+
+.col-schema{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:8px 0 14px}
+.col-tag{display:flex;align-items:center;gap:4px;background:var(--surf2);border:1.5px solid var(--brd);border-radius:4px;padding:3px 9px;font-size:11px;font-weight:600;color:var(--txt2)}
+.col-tag.required{border-color:rgba(200,16,46,.4);color:var(--red);background:var(--red-l)}
+.col-arrow{color:var(--txt3);font-size:14px;font-weight:300}
+
+/* ── ALERTS ── */
+.alerts-box{background:var(--surf);border:1.5px solid #f0b040;border-radius:var(--r);margin-bottom:16px;overflow:hidden;display:none}
+.alerts-box.v{display:block}
+.alerts-hdr{background:#fff9ed;padding:8px 14px;border-bottom:1px solid #f0d090;display:flex;align-items:center;justify-content:space-between}
+.alerts-hdr h4{font-size:12px;font-weight:700;color:var(--warn)}
+.alert-item{padding:8px 14px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;font-size:12px}
+.alert-item:last-child{border-bottom:none}
+.alert-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;flex-shrink:0;text-transform:uppercase}
+.ab-dup{background:var(--warn-bg);color:var(--warn);border:1px solid #f0b040}
+.alert-msg{flex:1}
+.alert-acts{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden}
+.tbl-toolbar{padding:10px 14px;border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tbl-search{flex:1;max-width:280px;background:var(--surf2);border:1.5px solid var(--brd);border-radius:var(--r);padding:6px 10px;font-size:12px;outline:none}
+.tbl-search:focus{border-color:var(--red)}
+.tbl-sel{background:var(--surf2);border:1.5px solid var(--brd);border-radius:var(--r);padding:5px 8px;font-size:12px;outline:none;cursor:pointer;max-width:160px}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
+th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt3);border-bottom:1.5px solid var(--brd);background:var(--surf2);white-space:nowrap;position:sticky;top:0}
+th input[type="checkbox"]{accent-color:var(--red);cursor:pointer}
+td{padding:7px 12px;border-bottom:1px solid var(--brd);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,0,0,.015)}
+tr.sel td{background:var(--red-l)}
+tr.row-warn td{background:#fffaee}
+tr.row-edit td{background:#f4f0ff}
+.base-tag{font-size:11px;font-weight:700;color:var(--red);background:var(--red-l);padding:1px 6px;border-radius:3px;display:inline-block}
+.pn-tag{font-family:var(--fd);font-size:12px;color:var(--red);background:var(--red-l);padding:1px 6px;border-radius:3px;display:inline-block}
+.cat-tag{font-size:10px;color:var(--txt3);background:var(--surf2);padding:1px 6px;border-radius:3px;display:inline-block;border:1px solid var(--brd)}
+.edit-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#9966ff;margin-right:4px}
+.promo-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--grn)}
+.tbl-pag{padding:10px 14px;border-top:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--txt3)}
+.pag-btns{display:flex;gap:3px}
+.pb{padding:3px 8px;border-radius:4px;font-size:11px;background:var(--surf2);border:1px solid var(--brd);color:var(--txt2);transition:all .1s;cursor:pointer}
+.pb:hover,.pb.on{background:var(--red);color:#fff;border-color:var(--red);font-weight:700}
+.pb:disabled{opacity:.3;cursor:not-allowed}
+
+/* ── MODAL ── */
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;place-items:center;padding:16px;backdrop-filter:blur(3px)}
+.ovl.o{display:grid}
+.modal{background:var(--surf);border-radius:8px;max-width:500px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);animation:mi .16s ease}
+@keyframes mi{from{transform:scale(.95);opacity:0}}
+.mhd{padding:14px 16px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.mhd h3{font-family:var(--fd);font-size:20px;color:var(--txt);letter-spacing:.3px}
+.mclose{color:var(--txt3);padding:3px;border-radius:3px;transition:color .1s}
+.mclose:hover{color:var(--txt)}
+.mbody{padding:14px 16px;flex:1;overflow-y:auto}
+.mfot{padding:10px 16px;border-top:1px solid var(--brd);display:flex;gap:7px;justify-content:flex-end}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--txt3);margin-bottom:4px}
+.fld input,.fld select,.fld textarea{width:100%;border:1.5px solid var(--brd);border-radius:var(--r);padding:7px 10px;font-size:13px;outline:none;transition:border-color .15s;background:var(--surf)}
+.fld input:focus,.fld select:focus{border-color:var(--red)}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── IMPORT MODE MODAL ── */
+.imp-opts{display:flex;flex-direction:column;gap:8px}
+.imp-opt{background:var(--surf2);border:2px solid var(--brd);border-radius:var(--r);padding:10px 14px;cursor:pointer;transition:all .12s;display:flex;align-items:flex-start;gap:10px}
+.imp-opt:hover{border-color:var(--red);background:var(--red-l)}
+.imp-opt.sel{border-color:var(--red);background:var(--red-l)}
+.imp-opt input[type=radio]{accent-color:var(--red);margin-top:2px;flex-shrink:0}
+.imp-opt-label{font-weight:700;font-size:12px;color:var(--txt)}
+.imp-opt-desc{font-size:11px;color:var(--txt3);margin-top:1px}
+.imp-chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2);margin-top:10px;padding-top:10px;border-top:1px solid var(--brd)}
+.imp-chk input{accent-color:var(--red)}
+
+/* ── EXPORT ── */
+.exp-card{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.exp-card h4{font-family:var(--fd);font-size:16px;margin-bottom:5px;color:var(--txt)}
+.exp-card p{font-size:12px;color:var(--txt2);margin-bottom:12px}
+.danger-zone{border-color:rgba(200,16,46,.4)}
+
+/* ── AGRUPAMENTOS PANEL ── */
+.grp-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.grp-search{flex:1;max-width:280px;background:var(--surf);border:1.5px solid var(--brd);border-radius:var(--r);padding:6px 10px;font-size:12px;outline:none}
+.grp-search:focus{border-color:var(--red)}
+.grp-count-badge{font-size:11px;color:var(--txt3);background:var(--surf2);border:1px solid var(--brd);padding:3px 10px;border-radius:20px;white-space:nowrap}
+.gc{background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
+.gc-head{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;transition:background .1s}
+.gc-head:hover{background:var(--surf2)}
+.gc-head.open{border-bottom:1px solid var(--brd)}
+.gc-name{flex:1;font-weight:700;font-size:13px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gc-cnt{font-size:11px;color:var(--txt3);background:var(--surf2);border:1px solid var(--brd);padding:1px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
+.gc-chevron{flex-shrink:0;color:var(--txt3);transition:transform .15s}
+.gc-head.open .gc-chevron{transform:rotate(180deg)}
+.gc-body{display:none;padding:0}
+.gc-body.open{display:block}
+.gi-row{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--brd);font-size:12px}
+.gi-row:last-child{border-bottom:none}
+.gi-pn{font-family:var(--fd);font-size:12px;color:var(--red);flex-shrink:0;min-width:72px}
+.gi-modelo{font-size:11px;color:var(--txt3);flex-shrink:0;min-width:60px}
+.gi-var{flex:1;color:var(--txt2)}
+.gi-acts{margin-left:auto;display:flex;gap:4px;flex-shrink:0}
+.gc-foot{padding:8px 14px;background:var(--surf2);display:flex;align-items:center;gap:6px;border-top:1px solid var(--brd)}
+.btn-move{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--info-bg);color:var(--info);border:1px solid #a0c4f0;font-family:var(--fb);font-weight:600;cursor:pointer;transition:all .1s;white-space:nowrap}
+.btn-move:hover{background:#d0e8ff}
+.base-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--red);background:var(--red-l);padding:2px 7px;border-radius:4px;cursor:default;max-width:160px}
+.base-chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rename-preview{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:8px 12px;font-size:11px;color:var(--txt2);margin-top:8px;max-height:120px;overflow-y:auto}
+.rename-preview strong{color:var(--red)}
+
+/* ── TOAST ── */
+.toasts{position:fixed;bottom:16px;right:16px;z-index:500;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.toast{background:var(--surf);border:1px solid var(--brd);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:500;max-width:300px;box-shadow:var(--sh2);display:flex;align-items:center;gap:7px;animation:ti .18s ease}
+@keyframes ti{from{transform:translateX(16px);opacity:0}}
+.td{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.toast-ok .td{background:var(--grn)}
+.toast-err .td{background:var(--red)}
+.toast-warn .td{background:var(--warn)}
+
+/* ── MISC ── */
+.sec-title{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--brd)}
+.empty-notice{text-align:center;padding:36px 20px;color:var(--txt3);font-size:12px}
+.info-bar{background:var(--info-bg);border:1px solid #a0c4f0;border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--info);margin-bottom:12px}
+@media(max-width:700px){.sidebar{transform:translateX(-100%)}.app-main{margin-left:0}}
+/* ── CURADORIA ── */
+.cur-modes{display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--brd);padding-bottom:8px}
+.cur-mode-btn{background:var(--surf);border:1px solid var(--brd);font-family:var(--fb);font-size:11px;padding:6px 12px;border-radius:var(--r);cursor:pointer;color:var(--txt2);font-weight:500}
+.cur-mode-btn:hover{border-color:var(--brd2)}
+.cur-mode-btn.on{background:var(--red-l);border-color:var(--red);color:var(--red);font-weight:700}
+.cur-paste-box{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:10px}
+.cur-paste-box textarea{width:100%;font-family:Menlo,Monaco,Consolas,monospace;font-size:12px;padding:8px;border:1px solid var(--brd);border-radius:var(--r);resize:vertical;background:var(--surf)}
+.cur-quick-box{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);padding:10px}
+.cur-quick-box input{width:100%;padding:8px 10px;border:1px solid var(--brd);border-radius:var(--r);font-size:13px;background:var(--surf)}
+.cur-quick-results{max-height:200px;overflow-y:auto;margin-top:8px}
+.cur-quick-result{padding:6px 10px;cursor:pointer;border-radius:var(--r);font-size:12px;display:flex;align-items:center;gap:8px}
+.cur-quick-result:hover{background:var(--red-l)}
+.cur-quick-result .pn{font-family:var(--fd);color:var(--red);font-size:11px;min-width:64px}
+.cur-quick-result.added{opacity:.5;cursor:not-allowed;background:var(--surf3)}
+.cur-quick-result.added::after{content:'✓ na seleção';margin-left:auto;font-size:10px;color:var(--grn);font-weight:700}
+.cur-table-wrap{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);overflow-x:auto;margin-top:14px}
+.cur-table{width:100%;border-collapse:collapse;font-size:12px}
+.cur-table thead{background:var(--surf2);position:sticky;top:0;z-index:1}
+.cur-table th{padding:8px 10px;text-align:left;font-weight:700;color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--brd);white-space:nowrap}
+.cur-table td{padding:6px 10px;border-bottom:1px solid var(--brd);vertical-align:middle}
+.cur-table tr:hover{background:var(--surf2)}
+.cur-table tr.sel{background:var(--red-l)}
+.cur-table tr.sel:hover{background:rgba(200,16,46,.12)}
+.cur-table tr.no-grid td{opacity:.45}
+.cur-table tr.no-grid td:first-child,.cur-table tr.no-grid td:last-child{opacity:1}
+.cur-table td.cur-pn{font-family:var(--fd);color:var(--red);white-space:nowrap}
+.cur-table input[type="checkbox"]{cursor:pointer;width:14px;height:14px;accent-color:var(--red)}
+.cur-grid-tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:9px;font-weight:700}
+.cur-grid-tag.on{background:rgba(26,122,53,.12);color:var(--grn)}
+.cur-grid-tag.off{background:rgba(200,16,46,.1);color:var(--red)}
+.cur-pager{display:flex;gap:6px;align-items:center;justify-content:center;padding:14px;font-size:12px;color:var(--txt2)}
+.cur-pager button{background:var(--surf);border:1px solid var(--brd);padding:5px 10px;border-radius:var(--r);cursor:pointer;font-size:11px;font-weight:600;color:var(--txt)}
+.cur-pager button:hover:not(:disabled){border-color:var(--red);color:var(--red)}
+.cur-pager button:disabled{opacity:.35;cursor:not-allowed}
+.cur-pager .pager-info{margin:0 8px;font-weight:600;color:var(--txt)}
+
+/* barra de ações fixa */
+.cur-actionbar{position:fixed;bottom:0;left:200px;right:0;background:var(--txt);color:#fff;padding:10px 18px;display:none;align-items:center;gap:14px;box-shadow:0 -4px 16px rgba(0,0,0,.18);z-index:50}
+.cur-actionbar.on{display:flex}
+.cur-ab-info{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cur-ab-count{font-family:var(--fd);font-size:18px;color:#ffb3bf}
+.cur-ab-clear{background:rgba(255,255,255,.15);border:none;color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1}
+.cur-ab-clear:hover{background:rgba(255,255,255,.3)}
+.cur-ab-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.cur-ab-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;font-family:var(--fb);font-weight:600;font-size:12px;padding:7px 12px;border-radius:var(--r);cursor:pointer;transition:background .12s}
+.cur-ab-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4)}
+
+/* barra de publicação */
+.cur-publish-bar{background:rgba(153,102,255,.08);border-bottom:1px solid rgba(153,102,255,.25);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cur-publish-bar .btn{font-size:12px;padding:7px 12px;white-space:nowrap}
+
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div class="load-logo">VASPI</div>
+  <div class="load-spin"></div>
+  <div class="load-msg">Conectando ao Firebase…</div>
+</div>
+
+<!-- LOCK -->
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-logo">VASPI</div>
+    <div class="lock-sub">Painel de Gestão</div>
+    <label for="pwInput">Senha de acesso</label>
+    <input class="lock-input" type="password" id="pwInput" placeholder="••••••••" autocomplete="current-password">
+    <div class="lock-err" id="pwErr"></div>
+    <button class="lock-btn" id="pwBtn">Entrar</button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div><div class="sb-logo-mark">VASPI</div><div class="sb-logo-text">Admin Panel</div></div>
+  </div>
+  <nav class="sb-nav">
+    <button class="nav-item on" data-p="dashboard">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+    </button>
+    <button class="nav-item" data-p="import">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 10l-4 4m0 0l-4-4m4 4V4"/></svg>Importar Planilha
+    </button>
+    <button class="nav-item" data-p="products">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>Itens
+      <span class="badge" id="alertBadge" style="display:none">!</span>
+    </button>
+    <button class="nav-item" data-p="grupos">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="9" height="9" rx="1"/><rect x="13" y="3" width="9" height="9" rx="1"/><rect x="2" y="14" width="9" height="9" rx="1"/><rect x="13" y="14" width="9" height="9" rx="1"/></svg>Agrupamentos
+    </button>
+    <button class="nav-item" data-p="curadoria">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Curadoria
+      <span class="badge" id="curadoriaBadge" style="display:none;background:#6b3fcc">●</span>
+    </button>
+    <button class="nav-item" data-p="vitrine">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Vitrine
+    </button>
+    <button class="nav-item" data-p="export">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M8 12l4-4m0 0l4 4m-4-4v12"/></svg>Exportar / Backup
+    </button>
+  </nav>
+  <div class="sb-footer">
+    <a href="catalogo-digital.html" class="sb-link" target="_blank">Ver Catálogo →</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="app-main">
+
+<!-- BARRA DE PUBLICAÇÃO GLOBAL (visível quando há alterações locais) -->
+<div class="cur-publish-bar" id="curPublishBar" style="display:none">
+  <div style="flex:1">
+    <strong style="color:#6b3fcc">● Você tem alterações locais não publicadas</strong>
+    <div style="font-size:11px;color:var(--txt2);margin-top:2px">As mudanças estão salvas no seu navegador. Visualize no catálogo antes de publicar.</div>
+  </div>
+  <button class="btn btn-ghost" id="curPreview">👁 Visualizar no catálogo</button>
+  <button class="btn btn-ghost" id="curExportLocal">↓ Baixar produtos.js</button>
+  <button class="btn btn-ghost" id="curResetLocal" style="color:var(--red)">↺ Descartar</button>
+  <button class="btn btn-primary" id="curPublish" style="background:#6b3fcc">☁ Publicar no Firebase</button>
+</div>
+
+<!-- DASHBOARD -->
+<section class="panel on" id="panel-dashboard">
+  <div class="ph">
+    <h2>Dashboard</h2>
+    <span id="syncStatus" class="sync-badge sync-ok"><span class="sync-dot"></span>Firebase OK</span>
+  </div>
+  <div style="padding:18px 20px">
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" id="st-items">0</div><div class="stat-l">Linhas (PNs)</div></div>
+      <div class="stat"><div class="stat-n" id="st-bases">0</div><div class="stat-l">Produtos Base (cards)</div></div>
+      <div class="stat"><div class="stat-n" id="st-modelos">0</div><div class="stat-l">Modelos únicos</div></div>
+      <div class="stat"><div class="stat-n" id="st-edited" style="color:#9966ff">0</div><div class="stat-l">Editados manualmente</div></div>
+      <div class="stat"><div class="stat-n" id="st-promo" style="color:var(--grn)">0</div><div class="stat-l">🔥 Em promoção</div></div>
+      <div class="stat"><div class="stat-n" id="st-novo" style="color:#0055aa">0</div><div class="stat-l">✨ Novidades</div></div>
+      <div class="stat"><div class="stat-n" id="st-top" style="color:#b8860b">0</div><div class="stat-l">⭐ Mais Vendidos</div></div>
+    </div>
+    <div class="sec-title">Status</div>
+    <div id="dash-status" style="background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:14px;font-size:12px;color:var(--txt2)">
+      Carregando dados do Firebase…
+    </div>
+  </div>
+</section>
+
+<!-- IMPORT -->
+<section class="panel" id="panel-import">
+  <div class="ph"><h2>Importar Planilha</h2></div>
+  <div style="padding:18px 20px">
+    <div class="dropzone" id="dropzone">
+      <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2" style="margin:0 auto;stroke:var(--brd2)"><path stroke-linecap="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <h3>Arraste a planilha aqui</h3>
+      <p>Formatos aceitos: <code>.xlsx</code> &nbsp;<code>.xls</code> &nbsp;<code>.csv</code></p>
+      <div class="col-schema">
+        <span class="col-tag required">Produto Base (GRID)</span>
+        <span class="col-arrow">→</span>
+        <span class="col-tag">Modelo</span>
+        <span class="col-arrow">→</span>
+        <span class="col-tag">Variação</span>
+        <span class="col-arrow">→</span>
+        <span class="col-tag required">Part Number</span>
+        <span class="col-arrow">+</span>
+        <span class="col-tag">Categoria</span>
+        <span class="col-tag">Linha</span>
+        <span class="col-tag">Promoção</span>
+        <span class="col-tag">Novidade</span>
+        <span class="col-tag">Mais Vendido</span>
+      </div>
+      <p style="font-size:11px;color:var(--txt3);margin-bottom:14px">Colunas em <span style="color:var(--red);font-weight:700">vermelho</span> são obrigatórias.</p>
+      <button class="btn btn-red" onclick="document.getElementById('fileInput').click()">Selecionar Arquivo</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+    </div>
+    <div class="alerts-box" id="alertsBox">
+      <div class="alerts-hdr">
+        <h4>⚠ Alertas detectados</h4>
+        <button class="btn btn-ghost btn-xs" id="dismissAll">Ignorar todos</button>
+      </div>
+      <div id="alertsList"></div>
+    </div>
+    <div id="importPreview" style="display:none">
+      <div class="sec-title">Prévia — <span id="prevStats"></span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-red" id="btnConfirmImport">✓ Confirmar Importação</button>
+        <button class="btn btn-ghost" id="btnCancelImport">Cancelar</button>
+      </div>
+      <div class="tbl-wrap" style="max-height:360px;overflow:auto">
+        <table>
+          <thead><tr>
+            <th>Produto Base</th><th>Modelo</th><th>Variação</th><th>PN</th>
+            <th>Categoria</th><th>Linha</th><th>Promo</th><th>Novo</th><th>Top</th><th>Status</th>
+          </tr></thead>
+          <tbody id="prevBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ITEMS TABLE -->
+<section class="panel" id="panel-products">
+  <div class="ph">
+    <h2>Itens do Catálogo</h2>
+    <div class="ph-actions">
+      <button class="btn btn-red" id="btnAgruparSel" disabled>Agrupar selecionados (<span id="selCntT">0</span>)</button>
+      <button class="btn btn-danger" id="btnDelSel" disabled>Excluir selecionados</button>
+    </div>
+  </div>
+  <div style="padding:0 20px 20px">
+    <div class="tbl-wrap">
+      <div class="tbl-toolbar">
+        <input class="tbl-search" id="tSearch" type="search" placeholder="Buscar produto, modelo, variação, PN…">
+        <select class="tbl-sel" id="tBaseFilter"><option value="">Todos os produtos base</option></select>
+        <select class="tbl-sel" id="tCatFilter"><option value="">Todas as categorias</option></select>
+        <select class="tbl-sel" id="tPromoFilter">
+          <option value="">Todas as tags</option>
+          <option value="promo">🔥 Em promoção</option>
+          <option value="novo">✨ Novidades</option>
+          <option value="top">⭐ Mais vendidos</option>
+          <option value="edit">✏ Editados manualmente</option>
+        </select>
+        <span style="margin-left:auto;font-size:11px;color:var(--txt3)" id="tblCount"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th><input type="checkbox" id="chkAll"></th>
+            <th>Produto Base (Grupo)</th><th>Modelo</th><th>Variação</th><th>PN</th>
+            <th>Categoria</th><th>Linha</th><th>Promo</th><th>Novo</th><th>Top</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tBody"></tbody>
+        </table>
+      </div>
+      <div class="tbl-pag">
+        <span id="pagInfo"></span>
+        <div class="pag-btns" id="pagBtns"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGRUPAMENTOS -->
+<section class="panel" id="panel-grupos">
+  <div class="ph">
+    <h2>Agrupamentos</h2>
+    <span style="font-size:12px;color:var(--txt3)">Cada grupo = 1 card no grid do catálogo</span>
+  </div>
+  <div style="padding:18px 20px">
+    <div class="grp-toolbar">
+      <input class="grp-search" id="grpSearch" type="search" placeholder="Buscar grupo…">
+      <span class="grp-count-badge" id="grpCountBadge">0 grupos</span>
+    </div>
+    <div id="grpList"><div class="empty-notice">Nenhum item importado ainda.</div></div>
+  </div>
+</section>
+
+<!-- CURADORIA -->
+<section class="panel" id="panel-curadoria">
+  <div class="ph">
+    <h2>Curadoria <span style="font-size:11px;color:var(--txt3);font-weight:400">— gestão em lote</span></h2>
+    <span id="curSyncStatus" class="sync-badge sync-ok"><span class="sync-dot"></span>Sem alterações</span>
+  </div>
+
+  <!-- TOOLBAR DE FILTROS -->
+  <div style="padding:14px 20px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <input class="tbl-search" id="curSearch" type="search" placeholder="Buscar produto, modelo, variação, PN…" style="min-width:240px;flex:1">
+      <select class="tbl-sel" id="curCatFilter"><option value="">Todas as categorias</option></select>
+      <select class="tbl-sel" id="curLineFilter"><option value="">Todos os subgrupos</option></select>
+      <select class="tbl-sel" id="curTipoFilter"><option value="">Todos os tipos</option></select>
+      <select class="tbl-sel" id="curGridFilter">
+        <option value="">GRID: todos</option>
+        <option value="on">Apenas visíveis</option>
+        <option value="off">Apenas ocultos</option>
+      </select>
+      <button class="btn btn-ghost" id="curClearFilters" style="font-size:11px">Limpar filtros</button>
+    </div>
+    <!-- MODOS DE SELEÇÃO -->
+    <div class="cur-modes">
+      <button class="cur-mode-btn on" data-mode="checkbox">☑ Checkbox</button>
+      <button class="cur-mode-btn" data-mode="paste">📋 Colar PNs</button>
+      <button class="cur-mode-btn" data-mode="quick">🔍 Busca rápida</button>
+      <span style="margin-left:auto;font-size:11px;color:var(--txt3)" id="curCountInfo">0 itens</span>
+    </div>
+    <!-- PAINEL COLAR PNs (oculto por padrão) -->
+    <div class="cur-paste-box" id="curPasteBox" style="display:none">
+      <textarea id="curPasteArea" rows="3" placeholder="Cole PNs separados por vírgula, espaço ou quebra de linha. Ex: 1001.01, 1002.01 1003.01"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-primary" id="curPasteApply">Selecionar PNs</button>
+        <button class="btn btn-ghost" id="curPasteAdd">Adicionar à seleção atual</button>
+        <span id="curPasteResult" style="font-size:11px;color:var(--txt2);align-self:center"></span>
+      </div>
+    </div>
+    <!-- PAINEL BUSCA RÁPIDA (oculto por padrão) -->
+    <div class="cur-quick-box" id="curQuickBox" style="display:none">
+      <input id="curQuickSearch" type="search" placeholder="Digite PN ou nome — clique nos resultados pra adicionar">
+      <div id="curQuickResults" class="cur-quick-results"></div>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div style="padding:0 20px 100px">
+    <div class="cur-table-wrap">
+      <table class="cur-table">
+        <thead>
+          <tr>
+            <th style="width:28px"><input type="checkbox" id="curChkAll" title="Selecionar todos da página"></th>
+            <th>PN</th>
+            <th>Cód. Princ.</th>
+            <th>Produto Base</th>
+            <th>Modelo</th>
+            <th>Variação</th>
+            <th>Categoria</th>
+            <th>Subgrupo</th>
+            <th>Tipo</th>
+            <th>Selo</th>
+            <th style="width:50px;text-align:center">GRID</th>
+          </tr>
+        </thead>
+        <tbody id="curTbody"></tbody>
+      </table>
+    </div>
+    <div class="cur-pager" id="curPager"></div>
+  </div>
+
+  <!-- BARRA DE AÇÕES FIXA (aparece quando há seleção) -->
+  <div class="cur-actionbar" id="curActionbar">
+    <div class="cur-ab-info">
+      <span class="cur-ab-count" id="curAbCount">0</span> selecionados
+      <button class="cur-ab-clear" id="curAbClear" title="Limpar seleção">✕</button>
+    </div>
+    <div class="cur-ab-actions">
+      <button class="cur-ab-btn" data-action="agrupar" title="Une vários PNs sob um mesmo Produto Base (renomeia o produto base)">🔗 Juntar produtos</button>
+      <button class="cur-ab-btn" data-action="grid" title="Mostra ou oculta os itens do catálogo público">👁 Mostrar/Ocultar</button>
+      <button class="cur-ab-btn" data-action="mover">📂 Mover Cat/Sub</button>
+      <button class="cur-ab-btn" data-action="tipo" title="Define o Tipo (3º nível de filtro no catálogo)">🏷 Definir Tipo</button>
+      <button class="cur-ab-btn" data-action="selo" title="Marca a linha de marca (selo colorido no card)">🎨 Definir Linha</button>
+      <button class="cur-ab-btn" data-action="renomear">✎ Renomear</button>
+      <button class="cur-ab-btn" data-action="subgrupo">📁 Novo subgrupo</button>
+    </div>
+    <div class="cur-ab-legend" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--txt3);margin-top:6px;width:100%">
+      <span style="font-weight:700;text-transform:uppercase;letter-spacing:.5px">Selos:</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#1a7a35"></span>Slim</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#0f8b8d"></span>Safira</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#1e5fb3"></span>Lisse</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#6b3fcc"></span>Ideale</span>
+    </div>
+  </div>
+</section>
+
+<!-- VITRINE (visão por cards, igual ao catálogo) -->
+<section class="panel" id="panel-vitrine">
+  <div class="ph">
+    <h2>Vitrine <span style="font-size:11px;color:var(--txt3);font-weight:400">— veja como o cliente vê e organize clicando nos cards</span></h2>
+    <span class="sync-badge sync-ok" id="vitSync" style="display:none"></span>
+  </div>
+  <div style="padding:14px 20px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <input class="tbl-search" id="vitSearch" type="search" placeholder="Buscar produto…" style="min-width:220px;flex:1">
+      <select class="tbl-sel" id="vitCat"><option value="">Todas as categorias</option></select>
+      <select class="tbl-sel" id="vitLine"><option value="">Todas as linhas</option></select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)"><input type="checkbox" id="vitShowHidden" style="accent-color:var(--red)">mostrar ocultos</label>
+      <button class="btn btn-red" id="vitApplyPatch" title="Aplica as mudanças que o assistente preparou (ex.: divisão de spots) MESCLANDO no seu trabalho — NÃO apaga nada do que você fez." style="margin-left:auto">🔧 Aplicar atualização</button>
+      <button class="btn btn-ghost" id="vitLoadFile" title="SUBSTITUI tudo pelo arquivo (descarta seu trabalho local). Use só pra recomeçar do arquivo.">↻ Carregar do arquivo</button>
+      <span id="vitCount" style="font-size:12px;color:var(--txt3)"></span>
+    </div>
+    <div id="vitGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
+  </div>
+  <!-- barra de seleção de cards (aparece quando há cards marcados) -->
+  <div id="vitSelBar" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:30;background:var(--surf);border:1.5px solid var(--brd);border-radius:10px;box-shadow:var(--sh2);padding:10px 14px;align-items:center;gap:12px">
+    <span style="font-size:13px;font-weight:600"><span id="vitSelCount">0</span> cards selecionados</span>
+    <button class="btn btn-red btn-xs" id="vitAgrupar">🔗 Agrupar num produto só</button>
+    <button class="btn btn-ghost btn-xs" id="vitMover">📂 Mover para…</button>
+    <button class="btn btn-ghost btn-xs" id="vitSelClear">Limpar</button>
+  </div>
+</section>
+
+<!-- modal: mover cards selecionados para outra categoria/linha -->
+<div class="ovl" id="vitMoveOvl">
+  <div class="modal" style="max-width:440px">
+    <div class="mhd"><h3>Mover para…</h3><button class="mclose" data-cur-close="vitMoveOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Mover <strong id="vitMoveCount">0</strong> card(s) para outra categoria/linha. (Não muda o PN — só o lugar no catálogo.)</p>
+      <div class="fld"><label>Categoria</label><select id="vitMoveCat"></select></div>
+      <div class="fld" style="margin-top:8px"><label>Linha</label><input id="vitMoveLine" list="vitMoveLineList" placeholder="Escolha ou digite uma linha…" autocomplete="off"><datalist id="vitMoveLineList"></datalist></div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="vitMoveOvl">Cancelar</button><button class="btn btn-red" id="vitMoveSave">Mover</button></div>
+  </div>
+</div>
+
+<!-- modal: aplicar atualização (patch) — mescla sem apagar o trabalho -->
+<div class="ovl" id="vitPatchOvl">
+  <div class="modal" style="max-width:520px">
+    <div class="mhd"><h3>Aplicar atualização (mesclar)</h3><button class="mclose" data-cur-close="vitPatchOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:8px"><strong id="vitPatchStatus"></strong> Atualiza só os itens da lista (por código), <strong>sem apagar</strong> o resto do seu trabalho. Se o campo abaixo estiver vazio, cole o texto que o assistente te mandou.</p>
+      <textarea id="vitPatchText" rows="6" placeholder='Cole aqui o patch (texto que começa com {"nota":...})' style="width:100%;font-family:monospace;font-size:11px;border:1.5px solid var(--brd);border-radius:6px;padding:8px"></textarea>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="vitPatchOvl">Cancelar</button><button class="btn btn-red" id="vitPatchApply">Aplicar (mesclar)</button></div>
+  </div>
+</div>
+
+<!-- modal: conteúdo de um card -->
+<div class="ovl" id="vitCardOvl">
+  <div class="modal" style="max-width:680px;width:100%">
+    <div class="mhd">
+      <h3 id="vitCardTitle" style="margin:0">Card</h3>
+      <button class="btn btn-ghost btn-xs" id="vitRename" title="Editar o nome deste produto" style="margin-left:8px">✎ Editar nome</button>
+      <span style="flex:1"></span>
+      <button class="mclose" data-cur-close="vitCardOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:6px" id="vitCardSub"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-red btn-xs" id="vitSplitAll">🔲 Separar todos por modelo</button>
+        <button class="btn btn-ghost btn-xs" id="vitJoinAll">🔗 Juntar tudo num card</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-red btn-xs" id="vitSplitSel" disabled>Separar selecionados</button>
+        <button class="btn btn-ghost btn-xs" id="vitJoinSel" disabled>Juntar selecionados</button>
+      </div>
+      <div id="vitCardItems" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:50vh;overflow:auto"></div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="vitCardOvl">Fechar</button></div>
+  </div>
+</div>
+
+<!-- EXPORT -->
+<section class="panel" id="panel-export">
+  <div class="ph"><h2>Exportar / Backup</h2></div>
+  <div style="padding:18px 20px;max-width:600px">
+
+    <div class="exp-card" style="border-color:rgba(26,122,53,.4);background:rgba(26,122,53,.03)">
+      <h4 style="color:var(--grn)">☁️ Dados no Firebase (automático)</h4>
+      <p>Todos os dados são salvos automaticamente na nuvem. Qualquer dispositivo com a senha acessa e edita em tempo real — sem precisar exportar manualmente.</p>
+      <div id="fbSyncInfo" style="font-size:11px;color:var(--txt3)">Verificando…</div>
+    </div>
+
+    <div class="exp-card">
+      <h4>↓ Baixar backup local (JSON)</h4>
+      <p>Exporta todos os dados para um arquivo local. Útil como backup de segurança.</p>
+      <button class="btn btn-ghost" id="btnExport">↓ Exportar backup completo</button>
+    </div>
+
+    <div class="exp-card">
+      <h4>↑ Restaurar Backup</h4>
+      <p>Restaura dados de um arquivo de backup exportado anteriormente.</p>
+      <button class="btn btn-ghost" id="btnImportBk">↑ Importar backup JSON</button>
+      <input type="file" id="bkFileInput" accept=".json" style="display:none">
+    </div>
+
+    <div class="exp-card danger-zone">
+      <h4 style="color:var(--red)">Zona de Perigo</h4>
+      <p>Remove todos os dados do Firebase. Irreversível sem backup.</p>
+      <button class="btn btn-danger" id="btnClear">⚠ Limpar tudo</button>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- MODAL: MODO IMPORTAÇÃO -->
+<div class="ovl" id="importModeOvl">
+  <div class="modal" style="max-width:440px">
+    <div class="mhd"><h3>Modo de Importação</h3><button class="mclose" id="impModeClose"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">O que deseja fazer com os dados existentes?</p>
+      <div class="imp-opts">
+        <label class="imp-opt sel"><input type="radio" name="impMode" value="replace" checked>
+          <div><div class="imp-opt-label">Atualizar tudo</div><div class="imp-opt-desc">Substitui completamente todos os itens</div></div>
+        </label>
+        <label class="imp-opt"><input type="radio" name="impMode" value="merge">
+          <div><div class="imp-opt-label">Atualizar + adicionar novos</div><div class="imp-opt-desc">Atualiza existentes (por PN) e adiciona novos</div></div>
+        </label>
+        <label class="imp-opt"><input type="radio" name="impMode" value="add">
+          <div><div class="imp-opt-label">Apenas adicionar novos</div><div class="imp-opt-desc">Mantém existentes, só insere PNs novos</div></div>
+        </label>
+      </div>
+      <label class="imp-chk">
+        <input type="checkbox" id="chkKeepEdits" checked>
+        ✏ Preservar edições manuais (não sobrescrever itens editados)
+      </label>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" id="impModeCancel">Cancelar</button><button class="btn btn-red" id="impModeConfirm">Continuar →</button></div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR ITEM -->
+<div class="ovl" id="editOvl">
+  <div class="modal">
+    <div class="mhd"><h3>Editar Item</h3><button class="mclose" id="editClose"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <div class="info-bar">Itens editados manualmente ficam protegidos contra sobrescrita em importações.</div>
+      <div class="fld"><label>Produto Base (GRID) *</label><input id="eProdutoBase" type="text" list="ePbList"><datalist id="ePbList"></datalist></div>
+      <div class="fld-row">
+        <div class="fld"><label>Modelo</label><input id="eModelo" type="text" list="eModeloList"><datalist id="eModeloList"></datalist></div>
+        <div class="fld"><label>Variação</label><input id="eVariacao" type="text"></div>
+      </div>
+      <div class="fld"><label>Part Number (PN) *</label><input id="ePn" type="text"></div>
+      <div class="fld-row">
+        <div class="fld"><label>Categoria</label><input id="eCat" type="text" list="eCatList"><datalist id="eCatList"></datalist></div>
+        <div class="fld"><label>Linha</label><input id="eLinha" type="text" list="eLinhaList"><datalist id="eLinhaList"></datalist></div>
+      </div>
+      <div class="fld"><label>Promoção</label>
+        <select id="ePromo"><option value="">Não</option><option value="sim">Sim</option></select>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>✨ Novidade</label>
+          <select id="eNovo"><option value="">Não</option><option value="sim">Sim</option></select>
+        </div>
+        <div class="fld"><label>⭐ Mais Vendido</label>
+          <select id="eTop"><option value="">Não</option><option value="sim">Sim</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" id="editCancel">Cancelar</button><button class="btn btn-red" id="editSave">Salvar alterações</button></div>
+  </div>
+</div>
+
+<!-- MODAL: MOVER ITEM -->
+<div class="ovl" id="moveOvl">
+  <div class="modal" style="max-width:420px">
+    <div class="mhd"><h3>Mover para outro grupo</h3><button class="mclose" id="moveClose"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:4px">Movendo: <strong id="movePnLabel" style="color:var(--red)"></strong></p>
+      <p style="font-size:11px;color:var(--txt3);margin-bottom:12px">Grupo atual: <span id="moveCurrentGroup"></span></p>
+      <div class="fld">
+        <label>Novo grupo (produto base)</label>
+        <input id="moveTarget" type="text" list="moveTargetList" placeholder="Digite ou escolha um grupo existente…" autocomplete="off">
+        <datalist id="moveTargetList"></datalist>
+      </div>
+      <p style="font-size:11px;color:var(--txt3);margin-top:4px">💡 Digite um nome novo para criar um grupo — ou escolha um existente.</p>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" id="moveCancel">Cancelar</button><button class="btn btn-red" id="moveSave">Mover</button></div>
+  </div>
+</div>
+
+<!-- MODAL: RENOMEAR GRUPO -->
+<div class="ovl" id="renameOvl">
+  <div class="modal" style="max-width:420px">
+    <div class="mhd"><h3>Renomear grupo</h3><button class="mclose" id="renameClose"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <div class="fld"><label>Nome atual</label><input id="renameOld" type="text" readonly style="opacity:.5;cursor:not-allowed"></div>
+      <div class="fld"><label>Novo nome *</label><input id="renameNew" type="text" placeholder="Novo nome do grupo…"></div>
+      <div class="rename-preview" id="renamePreview"></div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" id="renameCancel">Cancelar</button><button class="btn btn-red" id="renameSave">Renomear</button></div>
+  </div>
+</div>
+
+<!-- MODAL: AGRUPAR SELECIONADOS -->
+<div class="ovl" id="agruparOvl">
+  <div class="modal" style="max-width:460px">
+    <div class="mhd"><h3>Agrupar selecionados</h3><button class="mclose" id="agruparClose"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Os <strong id="agruparCount"></strong> itens selecionados serão movidos para o grupo:</p>
+      <div class="fld">
+        <label>Nome do grupo (produto base)</label>
+        <input id="agruparTarget" type="text" list="agruparTargetList" placeholder="Nome existente ou novo…" autocomplete="off">
+        <datalist id="agruparTargetList"></datalist>
+      </div>
+      <div style="margin-top:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin-bottom:6px">Itens que serão movidos</div>
+      <div class="rename-preview" id="agruparPreview"></div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" id="agruparCancel">Cancelar</button><button class="btn btn-red" id="agruparSave">Confirmar agrupamento</button></div>
+  </div>
+</div>
+
+<!-- MODAIS DE CURADORIA -->
+<div class="ovl" id="curAgrupOvl">
+  <div class="modal" style="max-width:480px">
+    <div class="mhd"><h3>Agrupar selecionados</h3><button class="mclose" data-cur-close="curAgrupOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px"><strong id="curAgrupCount">0</strong> itens selecionados serão movidos para o mesmo Produto Base.</p>
+      <div class="fld">
+        <label>Produto Base (digite novo ou escolha existente)</label>
+        <input id="curAgrupTarget" type="text" list="curAgrupList" autocomplete="off">
+        <datalist id="curAgrupList"></datalist>
+      </div>
+      <div style="margin-top:10px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--txt3)">Preview</div>
+      <div class="rename-preview" id="curAgrupPreview"></div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curAgrupOvl">Cancelar</button><button class="btn btn-red" id="curAgrupSave">Confirmar</button></div>
+  </div>
+</div>
+
+
+<div class="ovl" id="curGridOvl">
+  <div class="modal" style="max-width:420px">
+    <div class="mhd"><h3>Mostrar / Ocultar no catálogo</h3><button class="mclose" data-cur-close="curGridOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px"><strong id="curGridCount">0</strong> itens selecionados.</p>
+      <div class="fld">
+        <label>Ação</label>
+        <select id="curGridAction">
+          <option value="show">👁 Mostrar no catálogo (GRID on)</option>
+          <option value="hide">🚫 Ocultar do catálogo (GRID off)</option>
+          <option value="toggle">⇆ Inverter cada um</option>
+        </select>
+      </div>
+      <p style="font-size:11px;color:var(--txt3);margin-top:8px">Itens ocultos não aparecem no catálogo público — útil pra produtos descontinuados, internos ou que ainda não devem ser publicados.</p>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curGridOvl">Cancelar</button><button class="btn btn-red" id="curGridSave">Aplicar</button></div>
+  </div>
+</div>
+
+<div class="ovl" id="curMoverOvl">
+  <div class="modal" style="max-width:480px">
+    <div class="mhd"><h3>Mover para Categoria / Subgrupo</h3><button class="mclose" data-cur-close="curMoverOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px"><strong id="curMoverCount">0</strong> itens selecionados.</p>
+      <div class="fld">
+        <label>Nova Categoria <span style="color:var(--txt3);font-weight:400">(deixe vazio pra manter)</span></label>
+        <input id="curMoverCat" type="text" list="curMoverCatList" autocomplete="off">
+        <datalist id="curMoverCatList"></datalist>
+      </div>
+      <div class="fld">
+        <label>Novo Subgrupo <span style="color:var(--txt3);font-weight:400">(deixe vazio pra manter)</span></label>
+        <input id="curMoverLine" type="text" list="curMoverLineList" autocomplete="off">
+        <datalist id="curMoverLineList"></datalist>
+      </div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curMoverOvl">Cancelar</button><button class="btn btn-red" id="curMoverSave">Mover</button></div>
+  </div>
+</div>
+
+<div class="ovl" id="curRenameOvl">
+  <div class="modal" style="max-width:500px">
+    <div class="mhd"><h3>Renomear em lote</h3><button class="mclose" data-cur-close="curRenameOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px"><strong id="curRenameCount">0</strong> itens selecionados.</p>
+      <div class="fld">
+        <label>Campo a alterar</label>
+        <select id="curRenameField">
+          <option value="produto_base">Produto Base</option>
+          <option value="modelo">Modelo</option>
+          <option value="variacao">Variação</option>
+          <option value="tipo">Tipo</option>
+          <option value="selo">Linha (Selo)</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Modo</label>
+        <select id="curRenameMode">
+          <option value="set">Definir valor (substitui tudo)</option>
+          <option value="replace">Substituir trecho (find/replace)</option>
+          <option value="prefix">Adicionar prefixo</option>
+          <option value="suffix">Adicionar sufixo</option>
+        </select>
+      </div>
+      <div class="fld" id="curRenameFindWrap" style="display:none">
+        <label>Encontrar</label>
+        <input id="curRenameFind" type="text">
+      </div>
+      <div class="fld">
+        <label id="curRenameValueLbl">Novo valor</label>
+        <input id="curRenameValue" type="text">
+      </div>
+      <div style="margin-top:10px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--txt3)">Preview (5 primeiros)</div>
+      <div class="rename-preview" id="curRenamePreview"></div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curRenameOvl">Cancelar</button><button class="btn btn-red" id="curRenameSave">Aplicar</button></div>
+  </div>
+</div>
+
+<div class="ovl" id="curSeloOvl">
+  <div class="modal" style="max-width:440px">
+    <div class="mhd"><h3>Definir Linha de Marca</h3><button class="mclose" data-cur-close="curSeloOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Aplica selo de linha em <strong id="curSeloCount">0</strong> itens. O selo aparece no canto do card no catálogo.</p>
+      <div class="fld">
+        <label>Linha</label>
+        <select id="curSeloValue">
+          <option value="">— Remover selo —</option>
+          <option value="Slim">Linha Slim (verde)</option>
+          <option value="Safira">Linha Safira (turquesa)</option>
+          <option value="Lisse">Linha Lisse (azul)</option>
+          <option value="Ideale">Linha Ideale (roxo)</option>
+          <option value="Jeri">Linha Jeri (laranja)</option>
+        </select>
+      </div>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curSeloOvl">Cancelar</button><button class="btn btn-red" id="curSeloSave">Aplicar</button></div>
+  </div>
+</div>
+
+<div class="ovl" id="curTipoOvl">
+  <div class="modal" style="max-width:460px">
+    <div class="mhd"><h3>Definir Tipo</h3><button class="mclose" data-cur-close="curTipoOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Define o tipo (3º nível de filtro) para <strong id="curTipoCount">0</strong> itens.</p>
+      <div class="fld">
+        <label>Tipo (digite novo ou escolha existente)</label>
+        <input id="curTipoName" type="text" list="curTipoList" placeholder="Ex: Tomadas, Caixas, Interruptores, Pinos…" autocomplete="off">
+        <datalist id="curTipoList"></datalist>
+      </div>
+      <p style="font-size:11px;color:var(--txt3);margin-top:6px">O Tipo é usado apenas como filtro no catálogo — não aparece como separador visual no grid.</p>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curTipoOvl">Cancelar</button><button class="btn btn-red" id="curTipoSave">Aplicar</button></div>
+  </div>
+</div>
+
+<div class="ovl" id="curSubgrpOvl">
+  <div class="modal" style="max-width:460px">
+    <div class="mhd"><h3>Criar / mover para subgrupo</h3><button class="mclose" data-cur-close="curSubgrpOvl"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 18L18 6M6 6l12 12"/></svg></button></div>
+    <div class="mbody">
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Move <strong id="curSubgrpCount">0</strong> itens para um subgrupo (novo ou existente).</p>
+      <div class="fld">
+        <label>Nome do subgrupo</label>
+        <input id="curSubgrpName" type="text" list="curSubgrpList" placeholder="Ex: Iluminação de Emergência" autocomplete="off">
+        <datalist id="curSubgrpList"></datalist>
+      </div>
+      <p style="font-size:11px;color:var(--txt3);margin-top:6px">Se digitar um nome novo, o subgrupo é criado automaticamente. O subgrupo aparece como separador visual no catálogo.</p>
+    </div>
+    <div class="mfot"><button class="btn btn-ghost" data-cur-close="curSubgrpOvl">Cancelar</button><button class="btn btn-red" id="curSubgrpSave">Aplicar</button></div>
+  </div>
+</div>
+
+<div class="toasts" id="toastWrap"></div>
+
+<!-- catálogo corrigido (arquivo) — usado pelo botão "Carregar do arquivo (local)" na Vitrine -->
+<script src="produtos.js"></script>
+<!-- atualização preparada pelo assistente (mesclada via "Aplicar atualização") -->
+<script src="_patch.js" onerror="window.CATALOGO_PATCH=null"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   VASPI ADMIN PANEL v4 — Firebase Edition
+   Dados salvos no Firestore: catalogo/produtos
+═══════════════════════════════════════════════════════ */
+
+const PASSWORD = 'vaspi1244';
+
+// ── DB (Firebase) ─────────────────────────────────────
+const DB = {
+  _cache: null,
+  _remoteSnapshot: null, // snapshot da última versão do Firebase (referência pra reset)
+  LOCAL_KEY: 'vaspi_admin_local_v1',
+
+  async getItems() {
+    if (this._cache !== null) return this._cache;
+    // FONTE DE DADOS DETERMINÍSTICA (versão de trabalho):
+    // 1) edições locais salvas  2) o ARQUIVO produtos.js FRESCO (sem cache)
+    // 3) Firebase (só se não houver arquivo). Evita ver dados antigos do cache/nuvem.
+    const local = this._readLocal();
+    if (local && Array.isArray(local.items) && local.items.length) {
+      this._cache = local.items;
+      return this._cache;
+    }
+    // busca o arquivo SEMPRE FRESCO (não confia no cache do <script src>)
+    try {
+      const r = await fetch('produtos.js?t=' + Date.now(), { cache: 'no-store' });
+      const t = await r.text();
+      const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
+      if (arr.length) { this._cache = arr; return this._cache; }
+    } catch (e) {}
+    if (window.PRODUTOS && window.PRODUTOS.length) {
+      this._cache = JSON.parse(JSON.stringify(window.PRODUTOS));
+      return this._cache;
+    }
+    const remote = await window._fbGetItems();
+    this._remoteSnapshot = JSON.parse(JSON.stringify(remote));
+    this._cache = remote;
+    return this._cache;
+  },
+
+  // setItems agora SALVA LOCAL por padrão; só vai pro Firebase quando publishToFirebase() é chamado
+  async setItems(v, opts) {
+    opts = opts || {};
+    this._cache = v;
+    if (opts.toFirebase) {
+      setSyncStatus('saving');
+      const ok = await window._fbSetItems(v);
+      setSyncStatus(ok ? 'ok' : 'err');
+      if (ok) {
+        this._remoteSnapshot = JSON.parse(JSON.stringify(v));
+        this._clearLocal();
+        try { localStorage.removeItem('vaspi_catalogo_preview'); } catch(e){}
+      }
+      return ok;
+    } else {
+      // salva local
+      this._writeLocal({ items: v, ts: Date.now() });
+      // sincroniza também na chave que o catálogo público lê (mesma origin)
+      try { localStorage.setItem('vaspi_catalogo_preview', JSON.stringify({ items: v, ts: Date.now() })); } catch(e){}
+      setSyncStatus('local');
+      return true;
+    }
+  },
+
+  // publica edições locais no Firebase
+  async publishToFirebase() {
+    if (this._cache === null) return false;
+    return await this.setItems(this._cache, { toFirebase: true });
+  },
+
+  // descarta edições locais, volta ao snapshot remoto
+  async resetLocal() {
+    if (this._remoteSnapshot === null) {
+      // carrega do Firebase
+      const remote = await window._fbGetItems();
+      this._remoteSnapshot = JSON.parse(JSON.stringify(remote));
+    }
+    this._cache = JSON.parse(JSON.stringify(this._remoteSnapshot));
+    this._clearLocal();
+    try { localStorage.removeItem('vaspi_catalogo_preview'); } catch(e){}
+    setSyncStatus('ok');
+    return true;
+  },
+
+  hasLocalChanges() { return !!this._readLocal(); },
+
+  _readLocal() {
+    try {
+      const raw = localStorage.getItem(this.LOCAL_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+  },
+  _writeLocal(data) {
+    try { localStorage.setItem(this.LOCAL_KEY, JSON.stringify(data)); }
+    catch(e) { console.error('localStorage falhou:', e); toast('Erro ao salvar local: '+e.message,'err'); }
+  },
+  _clearLocal() { try { localStorage.removeItem(this.LOCAL_KEY); } catch(e){} },
+
+  invalidate() { this._cache = null; this._remoteSnapshot = null; }
+};
+
+function setSyncStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  const map = {
+    ok: { cls: 'sync-ok', txt: 'Firebase OK' },
+    saving: { cls: 'sync-saving', txt: 'Salvando…' },
+    err: { cls: 'sync-err', txt: 'Erro ao salvar!' },
+    local: { cls: 'sync-local', txt: 'Salvo local (não publicado)' },
+  };
+  const s = map[state] || map.ok;
+  el.className = 'sync-badge ' + s.cls;
+  el.innerHTML = `<span class="sync-dot"></span>${s.txt}`;
+}
+
+// ── STATE ─────────────────────────────────────────────
+const S = {
+  pendingRows: [], pendingAlerts: [],
+  editingPn: null,
+  selectedPNs: new Set(),
+  tPage:1, tSize:50,
+  tQ:'', tBase:'', tCat:'', tPromo:'',
+  tFiltered:[],
+};
+
+// ── TOAST ─────────────────────────────────────────────
+function toast(msg, type='ok') {
+  const w=document.getElementById('toastWrap');
+  const t=document.createElement('div');
+  t.className=`toast toast-${type}`;
+  t.innerHTML=`<span class="td"></span>${msg}`;
+  w.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+
+// ── LOCK ──────────────────────────────────────────────
+function setupLock() {
+  const pw=document.getElementById('pwInput');
+  const err=document.getElementById('pwErr');
+  function tryLogin() {
+    if (pw.value===PASSWORD) {
+      document.getElementById('lockScreen').style.display='none';
+      startApp();
+    } else {
+      err.textContent='Senha incorreta.'; pw.value=''; pw.focus();
+    }
+  }
+  document.getElementById('pwBtn').addEventListener('click',tryLogin);
+  pw.addEventListener('keydown',e=>{ if(e.key==='Enter') tryLogin(); });
+}
+
+// ── NAV ───────────────────────────────────────────────
+function setupNav() {
+  document.querySelectorAll('.nav-item[data-p]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+      document.getElementById('panel-'+btn.dataset.p).classList.add('on');
+      if (btn.dataset.p==='products') renderTable();
+      if (btn.dataset.p==='grupos') renderGrupos();
+      if (btn.dataset.p==='dashboard') updateDash();
+      if (btn.dataset.p==='export') updateExportInfo();
+      if (btn.dataset.p==='curadoria') Cur.open();
+      if (btn.dataset.p==='vitrine') Vit.open();
+    });
+  });
+}
+
+// ── DASHBOARD ─────────────────────────────────────────
+async function updateDash() {
+  const items = await DB.getItems();
+  const bases = new Set(items.map(i=>i.produto_base).filter(Boolean));
+  const modelos = new Set(items.map(i=>i.modelo).filter(Boolean));
+  const edited = items.filter(i=>i._edited).length;
+  const promo = items.filter(i=>String(i.promocao||'').toLowerCase().startsWith('s')).length;
+  const novo = items.filter(i=>String(i.tag_novo||'').toLowerCase().startsWith('s')).length;
+  const top = items.filter(i=>String(i.tag_top||'').toLowerCase().startsWith('s')).length;
+  document.getElementById('st-items').textContent = items.length;
+  document.getElementById('st-bases').textContent = bases.size;
+  document.getElementById('st-modelos').textContent = modelos.size;
+  document.getElementById('st-edited').textContent = edited;
+  document.getElementById('st-promo').textContent = promo;
+  const sn=document.getElementById('st-novo'); if(sn) sn.textContent=novo;
+  const st=document.getElementById('st-top'); if(st) st.textContent=top;
+  const s=document.getElementById('dash-status');
+  if (!items.length) {
+    s.innerHTML='Nenhum item importado. Acesse <strong>Importar Planilha</strong> para começar.';
+  } else {
+    s.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px">
+      <span><strong style="color:var(--red)">${items.length}</strong> linhas</span>
+      <span><strong style="color:var(--red)">${bases.size}</strong> produtos base</span>
+      <span><strong style="color:var(--grn)">${promo}</strong> em promoção</span>
+      <span><strong style="color:#0055aa">${novo}</strong> novidades</span>
+      <span><strong style="color:#b8860b">${top}</strong> mais vendidos</span>
+    </div>
+    <div style="margin-top:8px;color:var(--grn);font-size:11px;font-weight:600">✓ Dados sincronizados no Firebase — acessíveis de qualquer dispositivo</div>`;
+  }
+}
+
+async function updateExportInfo() {
+  const items = await DB.getItems();
+  document.getElementById('fbSyncInfo').textContent =
+    `${items.length} itens armazenados no Firebase. Última atualização: agora.`;
+}
+
+// ── IMPORT ────────────────────────────────────────────
+function setupImport() {
+  const zone=document.getElementById('dropzone');
+  const fi=document.getElementById('fileInput');
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag')});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)readFile(f)});
+  fi.addEventListener('change',e=>{ if(e.target.files[0]) readFile(e.target.files[0]) });
+
+  document.getElementById('btnConfirmImport').addEventListener('click', async ()=>{
+    const items = await DB.getItems();
+    items.length>0 ? openImportModeModal() : doImport('replace',false);
+  });
+  document.getElementById('btnCancelImport').addEventListener('click',()=>{
+    S.pendingRows=[]; document.getElementById('importPreview').style.display='none';
+  });
+  document.getElementById('dismissAll').addEventListener('click',()=>{
+    S.pendingAlerts.forEach(a=>a.ignored=true); renderAlerts();
+  });
+  document.querySelectorAll('.imp-opt').forEach(opt=>{
+    opt.addEventListener('click',()=>{ document.querySelectorAll('.imp-opt').forEach(o=>o.classList.remove('sel')); opt.classList.add('sel'); });
+  });
+  document.getElementById('impModeClose').addEventListener('click',()=>closeOvl('importModeOvl'));
+  document.getElementById('impModeCancel').addEventListener('click',()=>closeOvl('importModeOvl'));
+  document.getElementById('impModeConfirm').addEventListener('click',()=>{
+    const mode=document.querySelector('input[name="impMode"]:checked').value;
+    const keep=document.getElementById('chkKeepEdits').checked;
+    closeOvl('importModeOvl'); doImport(mode,keep);
+  });
+}
+
+function readFile(file) {
+  const ext=file.name.split('.').pop().toLowerCase();
+  const r=new FileReader();
+  if (ext==='csv'){r.readAsText(file,'utf-8');r.onload=e=>parseSheet(e.target.result,'csv');}
+  else{r.readAsArrayBuffer(file);r.onload=e=>parseSheet(e.target.result,'xlsx');}
+}
+
+function parseSheet(data,type) {
+  try {
+    const wb=type==='csv'?XLSX.read(data,{type:'string'}):XLSX.read(data,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    processRows(XLSX.utils.sheet_to_json(ws,{defval:''}));
+  } catch(err){toast('Erro ao ler arquivo: '+err.message,'err');}
+}
+
+const nk = k => k.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+const COL = {
+  produto_base:['produtobase','produto base','produtobasegrid','produto base grid','base','nome base','nomeproduto','produto','product','nome'],
+  modelo:['modelo','model','subproduto'],
+  variacao:['variacao','variação','variation','detalhe','especificacao','especificação'],
+  pn:['pn','partnumber','part number','referencia','ref','sku'],
+  codigo_principal:['codigoprincipal','codigo principal','codigosistema','codigo sistema','cod sistema','codprincipal','cod principal','codigo','cod'],
+  categoria:['categoria','category','cat'],
+  linha:['linha','line','sublinha','familia','subgrupo','sub grupo'],
+  tipo:['tipo','tipoproduto','tipo produto'],
+  selo:['selo','linha de marca','linhamarca','marca','sub linha','sublinha'],
+  promocao:['promocao','promoção','promo','promotion','oferta'],
+  tag_novo:['novo','novidade','new','lançamento','lancamento','tagnovo','tag novo'],
+  tag_top:['top','maisvendido','mais vendido','bestseller','best seller','tagvenda','tag top','destaque'],
+};
+function findCol(keys,field){return keys.find(k=>COL[field].includes(nk(k)))||null;}
+
+function processRows(rows) {
+  if (!rows.length){toast('Planilha vazia','err');return;}
+  const keys=Object.keys(rows[0]);
+  const cols=Object.fromEntries(Object.keys(COL).map(f=>[f,findCol(keys,f)]));
+  const missing=[];
+  if (!cols.produto_base) missing.push('"Produto Base (GRID)"');
+  if (!cols.pn) missing.push('"Part Number"');
+  if (missing.length){toast('Colunas obrigatórias não encontradas: '+missing.join(', '),'err');return;}
+  const alerts=[];
+  const pnSeen={};
+  const processed=rows.map((row,i)=>{
+    const p={
+      produto_base:String(row[cols.produto_base]||'').trim(),
+      modelo:String(cols.modelo?row[cols.modelo]||'':'').trim(),
+      variacao:String(cols.variacao?row[cols.variacao]||'':'').trim(),
+      pn:String(row[cols.pn]||'').trim(),
+      codigo_principal:String(cols.codigo_principal?row[cols.codigo_principal]||'':'').trim(),
+      categoria:String(cols.categoria?row[cols.categoria]||'':'').trim(),
+      linha:String(cols.linha?row[cols.linha]||'':'').trim(),
+      tipo:String(cols.tipo?row[cols.tipo]||'':'').trim(),
+      selo:String(cols.selo?row[cols.selo]||'':'').trim(),
+      promocao:String(cols.promocao?row[cols.promocao]||'':'').trim(),
+      tag_novo:String(cols.tag_novo?row[cols.tag_novo]||'':'').trim(),
+      tag_top:String(cols.tag_top?row[cols.tag_top]||'':'').trim(),
+      _row:i+2,_status:'ok',_alert:'',
+    };
+    if (!p.produto_base){p._status='err';p._alert+='Produto Base vazio. ';}
+    if (!p.pn){p._status='err';p._alert+='PN vazio. ';}
+    if (p.pn&&pnSeen[p.pn]!==undefined){
+      alerts.push({type:'dup',key:'dup_'+p.pn,msg:`PN duplicado: "${p.pn}" (linhas ${pnSeen[p.pn]} e ${p._row})`,ignored:false});
+      if(p._status==='ok')p._status='warn';p._alert+='PN duplicado. ';
+    }
+    if (p.pn) pnSeen[p.pn]=p._row;
+    return p;
+  });
+  S.pendingRows=processed; S.pendingAlerts=alerts;
+  const ok=processed.filter(p=>p._status==='ok').length;
+  const warn=processed.filter(p=>p._status==='warn').length;
+  const err=processed.filter(p=>p._status==='err').length;
+  document.getElementById('prevStats').textContent=`${processed.length} linhas · ${ok} OK · ${warn} alertas · ${err} erros`;
+  document.getElementById('importPreview').style.display='block';
+  document.getElementById('prevBody').innerHTML=processed.slice(0,200).map(p=>`
+    <tr class="${p._status!=='ok'?'row-warn':''}">
+      <td><span class="base-tag">${p.produto_base||'—'}</span></td>
+      <td>${p.modelo||''}</td><td>${p.variacao||''}</td>
+      <td><span class="pn-tag">${p.pn||'—'}</span></td>
+      <td><span class="cat-tag">${p.categoria||'—'}</span></td>
+      <td>${p.linha||''}</td>
+      <td>${String(p.promocao||'').toLowerCase().startsWith('s')?'<span class="promo-dot"></span>':''}</td>
+      <td>${String(p.tag_novo||'').toLowerCase().startsWith('s')?'✨':''}</td>
+      <td>${String(p.tag_top||'').toLowerCase().startsWith('s')?'⭐':''}</td>
+      <td style="font-size:11px">${p._alert?`<span style="color:var(--warn)">⚠ ${p._alert}</span>`:'<span style="color:var(--grn)">✓</span>'}</td>
+    </tr>`).join('')+(processed.length>200?`<tr><td colspan="10" style="text-align:center;color:var(--txt3);padding:8px">+${processed.length-200} linhas…</td></tr>`:'');
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const box=document.getElementById('alertsBox');
+  const list=document.getElementById('alertsList');
+  const active=S.pendingAlerts.filter(a=>!a.ignored);
+  box.classList.toggle('v',active.length>0);
+  list.innerHTML=active.map((a,i)=>`
+    <div class="alert-item">
+      <span class="alert-badge ab-dup">DUP</span>
+      <span class="alert-msg">${a.msg}</span>
+      <div class="alert-acts"><button class="btn btn-xs btn-ghost" data-ai="${i}">Ignorar</button></div>
+    </div>`).join('');
+  list.querySelectorAll('[data-ai]').forEach(b=>{b.addEventListener('click',()=>{active[parseInt(b.dataset.ai)].ignored=true;renderAlerts();});});
+}
+
+function openImportModeModal(){document.getElementById('importModeOvl').classList.add('o');}
+
+async function doImport(mode,keepEdits) {
+  const incoming=S.pendingRows
+    .filter(p=>p._status!=='err')
+    .map(p=>({produto_base:p.produto_base,modelo:p.modelo,variacao:p.variacao,pn:p.pn,codigo_principal:p.codigo_principal,categoria:p.categoria,linha:p.linha,tipo:p.tipo,selo:p.selo,promocao:p.promocao,tag_novo:p.tag_novo,tag_top:p.tag_top}));
+  let final=[];
+  const existing = await DB.getItems();
+  const editedPns=new Set(existing.filter(i=>i._edited).map(i=>i.pn));
+  if (mode==='replace') {
+    final=incoming.map(p=>{ if(keepEdits&&editedPns.has(p.pn)) return existing.find(e=>e.pn===p.pn)||p; return p; });
+  } else if (mode==='merge') {
+    const exMap=Object.fromEntries(existing.map(i=>[i.pn,i]));
+    final=incoming.map(p=>{ if(keepEdits&&exMap[p.pn]?._edited) return exMap[p.pn]; return p; });
+    existing.forEach(e=>{ if(!incoming.find(p=>p.pn===e.pn)) final.push(e); });
+  } else if (mode==='add') {
+    final=[...existing];
+    const ex=new Set(existing.map(i=>i.pn));
+    incoming.forEach(p=>{ if(!ex.has(p.pn)) final.push(p); });
+  }
+  // preserva campos exclusivos do admin (não existem na planilha) ao reimportar:
+  // 'no_grid' (oculto do catálogo) seria perdido a cada nova importação da base.
+  const exByPn = Object.fromEntries(existing.map(i=>[i.pn,i]));
+  final.forEach(p=>{ const e=exByPn[p.pn]; if(e){ if(e.no_grid && !p.no_grid) p.no_grid=e.no_grid; if(e.split && !p.split) p.split=e.split; if(e.card_img && !p.card_img) p.card_img=e.card_img; if(e.img_data && !p.img_data) p.img_data=e.img_data; } });
+  toast('Aplicando importação…','warn');
+  const ok = await DB.setItems(final);
+  S.pendingRows=[];
+  document.getElementById('importPreview').style.display='none';
+  document.getElementById('alertsBox').classList.remove('v');
+  if (ok) {
+    toast(`✓ ${final.length} itens aplicados localmente. Visualize o catálogo e publique quando quiser.`,'ok');
+    Cur.updatePublishBar && Cur.updatePublishBar();
+  }
+  else toast('Erro ao salvar.','err');
+  updateDash();
+}
+
+// ── TABLE ─────────────────────────────────────────────
+async function renderTable() {
+  const items = await DB.getItems();
+  const {tQ,tBase,tCat,tPromo}=S;
+  const bases=[...new Set(items.map(i=>i.produto_base).filter(Boolean))].sort();
+  const cats=[...new Set(items.map(i=>i.categoria).filter(Boolean))].sort();
+  const bSel=document.getElementById('tBaseFilter');
+  const cSel=document.getElementById('tCatFilter');
+  const bCur=bSel.value; const cCur=cSel.value;
+  bSel.innerHTML='<option value="">Todos os produtos base</option>'+bases.map(b=>`<option value="${esc(b)}" ${b===bCur?'selected':''}>${b}</option>`).join('');
+  cSel.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option value="${esc(c)}" ${c===cCur?'selected':''}>${c}</option>`).join('');
+  let filtered=items.filter(i=>{
+    if(tBase&&i.produto_base!==tBase) return false;
+    if(tCat&&i.categoria!==tCat) return false;
+    if(tPromo==='promo'&&!String(i.promocao||'').toLowerCase().startsWith('s')) return false;
+    if(tPromo==='novo'&&!String(i.tag_novo||'').toLowerCase().startsWith('s')) return false;
+    if(tPromo==='top'&&!String(i.tag_top||'').toLowerCase().startsWith('s')) return false;
+    if(tPromo==='edit'&&!i._edited) return false;
+    if(tQ){const h=[i.produto_base,i.modelo,i.variacao,i.pn,i.categoria].join(' ').toLowerCase();if(!h.includes(tQ.toLowerCase()))return false;}
+    return true;
+  });
+  S.tFiltered=filtered;
+  const total=filtered.length;
+  const pages=Math.max(1,Math.ceil(total/S.tSize));
+  if(S.tPage>pages) S.tPage=1;
+  const start=(S.tPage-1)*S.tSize;
+  const slice=filtered.slice(start,start+S.tSize);
+  document.getElementById('tblCount').textContent=total+' itens';
+  document.getElementById('pagInfo').textContent=`${start+1}–${Math.min(start+S.tSize,total)} de ${total}`;
+
+  document.getElementById('tBody').innerHTML=slice.map(i=>{
+    const key=i.pn;
+    const sel=S.selectedPNs.has(key);
+    const isP=String(i.promocao||'').toLowerCase().startsWith('s');
+    const isN=String(i.tag_novo||'').toLowerCase().startsWith('s');
+    const isT=String(i.tag_top||'').toLowerCase().startsWith('s');
+    return `<tr class="${sel?'sel':''}${i._edited?' row-edit':''}" data-pn="${esc(key)}">
+      <td><input type="checkbox" class="rchk" data-pn="${esc(key)}" ${sel?'checked':''} style="accent-color:var(--red);cursor:pointer"></td>
+      <td><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <div class="base-chip" title="${esc(i.produto_base||'')}"><span>${i.produto_base||'—'}</span></div>
+        <button class="btn-move" data-move="${esc(key)}">↗ Mover</button>
+      </div></td>
+      <td>${i.modelo||''}</td><td>${i.variacao||''}</td>
+      <td><span class="pn-tag">${i.pn||'—'}</span></td>
+      <td><span class="cat-tag">${i.categoria||'—'}</span></td>
+      <td style="color:var(--txt3)">${i.linha||''}</td>
+      <td><button class="tag-toggle ${isP?'tag-on-promo':''}" data-tag="promocao" data-pn="${esc(key)}">${isP?'🔥':'○'}</button></td>
+      <td><button class="tag-toggle ${isN?'tag-on-novo':''}" data-tag="tag_novo" data-pn="${esc(key)}">${isN?'✨':'○'}</button></td>
+      <td><button class="tag-toggle ${isT?'tag-on-top':''}" data-tag="tag_top" data-pn="${esc(key)}">${isT?'⭐':'○'}</button></td>
+      <td style="white-space:nowrap">
+        ${i._edited?'<span class="edit-dot" title="Editado manualmente"></span>':''}
+        <button class="btn btn-ghost btn-xs" data-edit="${esc(key)}">✏</button>
+        <button class="btn btn-danger btn-xs" data-del="${esc(key)}">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Paginação
+  const pagBtns=document.getElementById('pagBtns');
+  pagBtns.innerHTML='';
+  const addPb=(lbl,pg,dis)=>{const b=document.createElement('button');b.className='pb'+(pg===S.tPage?' on':'');b.textContent=lbl;b.disabled=!!dis;b.addEventListener('click',()=>{S.tPage=pg;renderTable();});pagBtns.appendChild(b);};
+  addPb('«',1,S.tPage===1);addPb('‹',S.tPage-1,S.tPage===1);
+  for(let p=Math.max(1,S.tPage-2);p<=Math.min(pages,S.tPage+2);p++) addPb(p,p);
+  addPb('›',S.tPage+1,S.tPage===pages);addPb('»',pages,S.tPage===pages);
+
+  // Eventos
+  document.getElementById('chkAll').addEventListener('change',e=>{
+    slice.forEach(i=>{ if(e.target.checked) S.selectedPNs.add(i.pn); else S.selectedPNs.delete(i.pn); });
+    updateSelCount(); renderTable();
+  });
+  document.querySelectorAll('.rchk').forEach(chk=>{
+    chk.addEventListener('change',e=>{
+      const pn=e.target.dataset.pn;
+      e.target.checked ? S.selectedPNs.add(pn) : S.selectedPNs.delete(pn);
+      updateSelCount();
+      const tr=e.target.closest('tr'); if(tr) tr.classList.toggle('sel',e.target.checked);
+    });
+  });
+  document.querySelectorAll('[data-tag]').forEach(btn=>{
+    btn.addEventListener('click',()=>toggleTag(btn.dataset.pn, btn.dataset.tag));
+  });
+  document.querySelectorAll('[data-edit]').forEach(btn=>{btn.addEventListener('click',()=>openEdit(btn.dataset.edit));});
+  document.querySelectorAll('[data-del]').forEach(btn=>{btn.addEventListener('click',()=>delItem(btn.dataset.del));});
+  document.querySelectorAll('[data-move]').forEach(btn=>{btn.addEventListener('click',()=>openMove(btn.dataset.move));});
+}
+
+function updateSelCount(){
+  const n=S.selectedPNs.size;
+  document.getElementById('selCntT').textContent=n;
+  document.getElementById('btnAgruparSel').disabled=n<2;
+  document.getElementById('btnDelSel').disabled=n===0;
+}
+
+async function toggleTag(pn,tag){
+  const items = await DB.getItems();
+  const item=items.find(i=>i.pn===pn);
+  if(!item) return;
+  const isOn=String(item[tag]||'').toLowerCase().startsWith('s');
+  item[tag]=isOn?'':'sim';
+  item._edited=true;
+  await DB.setItems(items);
+  renderTable();
+}
+
+async function delItem(pn){
+  if(!confirm(`Excluir item "${pn}"?`)) return;
+  const items = await DB.getItems();
+  await DB.setItems(items.filter(i=>i.pn!==pn));
+  toast('Item excluído','ok'); renderTable(); updateDash();
+}
+
+function setupTableEvents(){
+  document.getElementById('tSearch').addEventListener('input',e=>{S.tQ=e.target.value;S.tPage=1;renderTable();});
+  document.getElementById('tBaseFilter').addEventListener('change',e=>{S.tBase=e.target.value;S.tPage=1;renderTable();});
+  document.getElementById('tCatFilter').addEventListener('change',e=>{S.tCat=e.target.value;S.tPage=1;renderTable();});
+  document.getElementById('tPromoFilter').addEventListener('change',e=>{S.tPromo=e.target.value;S.tPage=1;renderTable();});
+  document.getElementById('btnDelSel').addEventListener('click',async()=>{
+    if(!confirm(`Excluir ${S.selectedPNs.size} itens?`)) return;
+    const items = await DB.getItems();
+    await DB.setItems(items.filter(i=>!S.selectedPNs.has(i.pn)));
+    S.selectedPNs.clear(); updateSelCount();
+    toast('Itens excluídos','ok'); renderTable(); updateDash();
+  });
+  document.getElementById('btnAgruparSel').addEventListener('click',()=>openAgrupar());
+}
+
+// ── EDIT MODAL ────────────────────────────────────────
+async function openEdit(pn){
+  const items = await DB.getItems();
+  const item=items.find(i=>i.pn===pn);
+  if(!item) return;
+  S.editingPn=pn;
+  document.getElementById('eProdutoBase').value=item.produto_base||'';
+  document.getElementById('eModelo').value=item.modelo||'';
+  document.getElementById('eVariacao').value=item.variacao||'';
+  document.getElementById('ePn').value=item.pn||'';
+  document.getElementById('eCat').value=item.categoria||'';
+  document.getElementById('eLinha').value=item.linha||'';
+  document.getElementById('ePromo').value=String(item.promocao||'').toLowerCase().startsWith('s')?'sim':'';
+  document.getElementById('eNovo').value=String(item.tag_novo||'').toLowerCase().startsWith('s')?'sim':'';
+  document.getElementById('eTop').value=String(item.tag_top||'').toLowerCase().startsWith('s')?'sim':'';
+  const bases=[...new Set(items.map(i=>i.produto_base).filter(Boolean))];
+  const mods=[...new Set(items.map(i=>i.modelo).filter(Boolean))];
+  const cats=[...new Set(items.map(i=>i.categoria).filter(Boolean))];
+  const linhas=[...new Set(items.map(i=>i.linha).filter(Boolean))];
+  document.getElementById('ePbList').innerHTML=bases.map(b=>`<option value="${esc(b)}">`).join('');
+  document.getElementById('eModeloList').innerHTML=mods.map(m=>`<option value="${esc(m)}">`).join('');
+  document.getElementById('eCatList').innerHTML=cats.map(c=>`<option value="${esc(c)}">`).join('');
+  document.getElementById('eLinhaList').innerHTML=linhas.map(l=>`<option value="${esc(l)}">`).join('');
+  document.getElementById('editOvl').classList.add('o');
+}
+
+function setupEditModal(){
+  document.getElementById('editClose').addEventListener('click',()=>closeOvl('editOvl'));
+  document.getElementById('editCancel').addEventListener('click',()=>closeOvl('editOvl'));
+  document.getElementById('editSave').addEventListener('click',async()=>{
+    const items = await DB.getItems();
+    const idx=items.findIndex(i=>i.pn===S.editingPn);
+    if(idx===-1) return;
+    const newPn=document.getElementById('ePn').value.trim();
+    if(!newPn){toast('PN não pode ser vazio','err');return;}
+    if(newPn!==S.editingPn && items.find(i=>i.pn===newPn)){toast('PN já existe','err');return;}
+    items[idx]={
+      ...items[idx],
+      produto_base:document.getElementById('eProdutoBase').value.trim(),
+      modelo:document.getElementById('eModelo').value.trim(),
+      variacao:document.getElementById('eVariacao').value.trim(),
+      pn:newPn,
+      categoria:document.getElementById('eCat').value.trim(),
+      linha:document.getElementById('eLinha').value.trim(),
+      promocao:document.getElementById('ePromo').value,
+      tag_novo:document.getElementById('eNovo').value,
+      tag_top:document.getElementById('eTop').value,
+      _edited:true,
+    };
+    await DB.setItems(items);
+    closeOvl('editOvl'); toast('✓ Item atualizado e salvo no Firebase','ok');
+    renderTable(); updateDash();
+  });
+}
+
+// ── MOVE MODAL ────────────────────────────────────────
+async function openMove(pn){
+  const items = await DB.getItems();
+  const item=items.find(i=>i.pn===pn);
+  if(!item) return;
+  S.movingPn=pn;
+  document.getElementById('movePnLabel').textContent=pn;
+  document.getElementById('moveCurrentGroup').textContent=item.produto_base||'—';
+  document.getElementById('moveTarget').value='';
+  const bases=[...new Set(items.map(i=>i.produto_base).filter(Boolean))];
+  document.getElementById('moveTargetList').innerHTML=bases.map(b=>`<option value="${esc(b)}">`).join('');
+  document.getElementById('moveOvl').classList.add('o');
+}
+
+function setupMoveModal(){
+  document.getElementById('moveClose').addEventListener('click',()=>closeOvl('moveOvl'));
+  document.getElementById('moveCancel').addEventListener('click',()=>closeOvl('moveOvl'));
+  document.getElementById('moveSave').addEventListener('click',async()=>{
+    const target=document.getElementById('moveTarget').value.trim();
+    if(!target){toast('Digite um grupo','err');return;}
+    const items = await DB.getItems();
+    const item=items.find(i=>i.pn===S.movingPn);
+    if(!item) return;
+    item.produto_base=target; item._edited=true;
+    await DB.setItems(items);
+    closeOvl('moveOvl'); toast(`✓ Movido para "${target}"`,'ok');
+    renderTable(); updateDash();
+  });
+}
+
+// ── GRUPOS ────────────────────────────────────────────
+async function renderGrupos(){
+  const items = await DB.getItems();
+  const q=(document.getElementById('grpSearch').value||'').toLowerCase();
+  const map={};
+  items.forEach(i=>{
+    const base=String(i.produto_base||'').trim(); if(!base) return;
+    if(!map[base]) map[base]={name:base,items:[]};
+    map[base].items.push(i);
+  });
+  let groups=Object.values(map).sort((a,b)=>a.name.localeCompare(b.name,'pt'));
+  if(q) groups=groups.filter(g=>g.name.toLowerCase().includes(q));
+  document.getElementById('grpCountBadge').textContent=`${groups.length} grupos`;
+  const el=document.getElementById('grpList');
+  if(!groups.length){el.innerHTML='<div class="empty-notice">Nenhum grupo encontrado.</div>';return;}
+  el.innerHTML=groups.map(g=>`
+    <div class="gc">
+      <div class="gc-head" data-grp="${esc(g.name)}">
+        <div class="gc-name">${g.name}</div>
+        <span class="gc-cnt">${g.items.length} PN${g.items.length!==1?'s':''}</span>
+        <button class="btn btn-ghost btn-xs" data-rename="${esc(g.name)}" style="flex-shrink:0">✏ Renomear</button>
+        <svg class="gc-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="gc-body">
+        ${g.items.map(i=>`
+          <div class="gi-row">
+            <span class="gi-pn">${i.pn}</span>
+            <span class="gi-modelo">${i.modelo||''}</span>
+            <span class="gi-var">${i.variacao||''}</span>
+            <div class="gi-acts">
+              <button class="btn-move" data-move="${esc(i.pn)}">↗ Mover</button>
+              <button class="btn btn-danger btn-xs" data-del="${esc(i.pn)}">✕</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  el.querySelectorAll('.gc-head').forEach(h=>{
+    h.addEventListener('click',e=>{
+      if(e.target.closest('[data-rename]')) return;
+      const body=h.nextElementSibling;
+      h.classList.toggle('open'); body.classList.toggle('open');
+    });
+  });
+  el.querySelectorAll('[data-rename]').forEach(btn=>{btn.addEventListener('click',e=>{e.stopPropagation();openRename(btn.dataset.rename);});});
+  el.querySelectorAll('[data-move]').forEach(btn=>{btn.addEventListener('click',()=>openMove(btn.dataset.move));});
+  el.querySelectorAll('[data-del]').forEach(btn=>{btn.addEventListener('click',()=>delItem(btn.dataset.del));});
+}
+
+// ── RENAME MODAL ──────────────────────────────────────
+async function openRename(name){
+  const items = await DB.getItems();
+  S.renamingGroup=name;
+  document.getElementById('renameOld').value=name;
+  document.getElementById('renameNew').value=name;
+  const count=items.filter(i=>i.produto_base===name).length;
+  document.getElementById('renamePreview').innerHTML=`<strong>${count}</strong> itens serão renomeados.`;
+  document.getElementById('renameOvl').classList.add('o');
+}
+
+function setupRenameModal(){
+  document.getElementById('renameClose').addEventListener('click',()=>closeOvl('renameOvl'));
+  document.getElementById('renameCancel').addEventListener('click',()=>closeOvl('renameOvl'));
+  document.getElementById('renameSave').addEventListener('click',async()=>{
+    const newName=document.getElementById('renameNew').value.trim();
+    if(!newName){toast('Nome vazio','err');return;}
+    const items = await DB.getItems();
+    items.forEach(i=>{ if(i.produto_base===S.renamingGroup){i.produto_base=newName;i._edited=true;} });
+    await DB.setItems(items);
+    closeOvl('renameOvl'); toast(`✓ Grupo renomeado para "${newName}"`,'ok');
+    renderGrupos(); updateDash();
+  });
+}
+
+// ── AGRUPAR MODAL ─────────────────────────────────────
+async function openAgrupar(){
+  const items = await DB.getItems();
+  const pns=[...S.selectedPNs];
+  document.getElementById('agruparCount').textContent=pns.length;
+  document.getElementById('agruparTarget').value='';
+  const bases=[...new Set(items.map(i=>i.produto_base).filter(Boolean))];
+  document.getElementById('agruparTargetList').innerHTML=bases.map(b=>`<option value="${esc(b)}">`).join('');
+  const sel=items.filter(i=>pns.includes(i.pn));
+  document.getElementById('agruparPreview').innerHTML=sel.map(i=>`<div style="padding:2px 0"><strong style="color:var(--red)">${i.pn}</strong> — ${i.produto_base||'?'}</div>`).join('');
+  document.getElementById('agruparOvl').classList.add('o');
+}
+
+function setupAgruparModal(){
+  document.getElementById('agruparClose').addEventListener('click',()=>closeOvl('agruparOvl'));
+  document.getElementById('agruparCancel').addEventListener('click',()=>closeOvl('agruparOvl'));
+  document.getElementById('agruparSave').addEventListener('click',async()=>{
+    const target=document.getElementById('agruparTarget').value.trim();
+    if(!target){toast('Digite um nome de grupo','err');return;}
+    const items = await DB.getItems();
+    items.forEach(i=>{ if(S.selectedPNs.has(i.pn)){i.produto_base=target;i._edited=true;} });
+    await DB.setItems(items);
+    S.selectedPNs.clear(); updateSelCount();
+    closeOvl('agruparOvl'); toast(`✓ ${document.getElementById('agruparCount').textContent} itens agrupados em "${target}"`,'ok');
+    renderTable(); updateDash();
+  });
+}
+
+// ── EXPORT ────────────────────────────────────────────
+function setupExport(){
+  document.getElementById('btnExport').addEventListener('click',async()=>{
+    const items = await DB.getItems();
+    download(JSON.stringify({vaspi_backup:true,items,exportedAt:new Date().toISOString()},null,2),'vaspi_backup.json','application/json');
+    toast('Backup exportado','ok');
+  });
+  document.getElementById('btnImportBk').addEventListener('click',()=>document.getElementById('bkFileInput').click());
+  document.getElementById('bkFileInput').addEventListener('change',e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=async ev=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        const arr=d.items||d;
+        if(!Array.isArray(arr)) throw new Error('Formato inválido');
+        await DB.setItems(arr);
+        toast(`✓ ${arr.length} itens restaurados do backup`,'ok'); updateDash();
+      }catch(err){toast('Erro ao importar backup: '+err.message,'err');}
+    };
+    r.readAsText(f);
+  });
+  document.getElementById('btnClear').addEventListener('click',async()=>{
+    if(!confirm('Tem certeza? Isso remove TODOS os dados do Firebase!')) return;
+    await DB.setItems([]);
+    DB.invalidate();
+    toast('Todos os dados removidos','warn'); updateDash();
+  });
+}
+
+function download(content,filename,mime){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=filename; a.click();
+}
+
+// ── SEARCH ────────────────────────────────────────────
+function setupGrpSearch(){
+  document.getElementById('grpSearch').addEventListener('input',()=>renderGrupos());
+}
+
+// ── HELPERS ───────────────────────────────────────────
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function closeOvl(id){document.getElementById(id).classList.remove('o');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape') document.querySelectorAll('.ovl.o').forEach(o=>o.classList.remove('o'));});
+document.querySelectorAll('.ovl').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('o');}));
+
+// ── INIT ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// CURADORIA - GESTÃO EM LOTE
+// ═══════════════════════════════════════════════════════
+// debounce helper
+const deb = (fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};};
+
+const Cur = {
+  selected: new Set(),   // PNs selecionados
+  mode: 'checkbox',      // 'checkbox' | 'paste' | 'quick'
+  page: 1, pageSize: 50,
+  filters: { q:'', cat:'', line:'', tipo:'', grid:'' },
+  filtered: [],          // itens após filtros
+  // mantém todos os itens já carregados (referência viva)
+  _itemsRef: null,
+
+  async setup() {
+    // tabs de modo
+    document.querySelectorAll('.cur-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.setMode(btn.dataset.mode));
+    });
+
+    // filtros
+    document.getElementById('curSearch').addEventListener('input', deb(e => { this.filters.q = e.target.value; this.page=1; this.render(); }, 200));
+    document.getElementById('curCatFilter').addEventListener('change', e => { this.filters.cat = e.target.value; this.refreshLineFilter(); this.refreshTipoFilter(); this.page=1; this.render(); });
+    document.getElementById('curLineFilter').addEventListener('change', e => { this.filters.line = e.target.value; this.refreshTipoFilter(); this.page=1; this.render(); });
+    document.getElementById('curTipoFilter').addEventListener('change', e => { this.filters.tipo = e.target.value; this.page=1; this.render(); });
+    document.getElementById('curGridFilter').addEventListener('change', e => { this.filters.grid = e.target.value; this.page=1; this.render(); });
+    document.getElementById('curClearFilters').addEventListener('click', () => {
+      this.filters = { q:'', cat:'', line:'', tipo:'', grid:'' };
+      document.getElementById('curSearch').value = '';
+      document.getElementById('curCatFilter').value = '';
+      document.getElementById('curLineFilter').value = '';
+      document.getElementById('curTipoFilter').value = '';
+      document.getElementById('curGridFilter').value = '';
+      this.page=1; this.render();
+    });
+
+    // checkbox global
+    document.getElementById('curChkAll').addEventListener('change', e => {
+      const visible = this.getVisiblePage();
+      if (e.target.checked) visible.forEach(it => this.selected.add(it.pn));
+      else visible.forEach(it => this.selected.delete(it.pn));
+      this.render();
+    });
+
+    // paste PNs
+    document.getElementById('curPasteApply').addEventListener('click', () => this.pasteApply(false));
+    document.getElementById('curPasteAdd').addEventListener('click', () => this.pasteApply(true));
+
+    // quick search
+    document.getElementById('curQuickSearch').addEventListener('input', deb(e => this.quickSearch(e.target.value), 200));
+
+    // ações
+    document.querySelectorAll('.cur-ab-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.openAction(btn.dataset.action));
+    });
+    document.getElementById('curAbClear').addEventListener('click', () => this.clearSelection());
+
+    // close handlers genéricos dos modais
+    document.querySelectorAll('[data-cur-close]').forEach(b => {
+      b.addEventListener('click', () => document.getElementById(b.dataset.curClose).classList.remove('o'));
+    });
+
+    // save handlers
+    document.getElementById('curAgrupSave').addEventListener('click', () => this.doAgrupar());
+    document.getElementById('curGridSave').addEventListener('click', () => this.doGrid());
+    document.getElementById('curMoverSave').addEventListener('click', () => this.doMover());
+    document.getElementById('curTipoSave').addEventListener('click', () => this.doTipo());
+    document.getElementById('curSeloSave').addEventListener('click', () => this.doSelo());
+    document.getElementById('curRenameSave').addEventListener('click', () => this.doRenomear());
+    document.getElementById('curSubgrpSave').addEventListener('click', () => this.doSubgrp());
+
+    // rename modal — controla campos
+    document.getElementById('curRenameMode').addEventListener('change', () => this.updateRenamePreview());
+    document.getElementById('curRenameField').addEventListener('change', () => this.updateRenamePreview());
+    document.getElementById('curRenameValue').addEventListener('input', () => this.updateRenamePreview());
+    document.getElementById('curRenameFind').addEventListener('input', () => this.updateRenamePreview());
+    document.getElementById('curAgrupTarget').addEventListener('input', () => this.updateAgrupPreview());
+
+    // publish bar
+    document.getElementById('curPublish').addEventListener('click', () => this.publish());
+    document.getElementById('curResetLocal').addEventListener('click', () => this.resetLocal());
+    document.getElementById('curExportLocal').addEventListener('click', () => this.exportJS());
+    document.getElementById('curPreview').addEventListener('click', () => this.openPreview());
+  },
+
+  async open() {
+    const items = await DB.getItems();
+    this._itemsRef = items;
+    this.refreshFilters();
+    this.refreshLineFilter();
+    this.refreshTipoFilter();
+    this.render();
+    this.updatePublishBar();
+  },
+
+  setMode(m) {
+    this.mode = m;
+    document.querySelectorAll('.cur-mode-btn').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+    document.getElementById('curPasteBox').style.display = m === 'paste' ? 'block' : 'none';
+    document.getElementById('curQuickBox').style.display = m === 'quick' ? 'block' : 'none';
+    if (m === 'quick') document.getElementById('curQuickSearch').focus();
+  },
+
+  // popula filtros de categoria/subgrupo
+  refreshFilters() {
+    const items = this._itemsRef || [];
+    const cats = [...new Set(items.map(i => i.categoria).filter(Boolean))].sort();
+    const sel = document.getElementById('curCatFilter');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c => `<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  },
+  refreshLineFilter() {
+    const items = this._itemsRef || [];
+    const cat = this.filters.cat;
+    const filteredItems = cat ? items.filter(i => i.categoria === cat) : items;
+    const lines = [...new Set(filteredItems.map(i => i.linha).filter(Boolean))].sort();
+    const sel = document.getElementById('curLineFilter');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Todos os subgrupos</option>' + lines.map(l => `<option value="${esc(l)}" ${l===cur?'selected':''}>${esc(l)}</option>`).join('');
+  },
+  refreshTipoFilter() {
+    const items = this._itemsRef || [];
+    let filteredItems = items;
+    if (this.filters.cat) filteredItems = filteredItems.filter(i => i.categoria === this.filters.cat);
+    if (this.filters.line) filteredItems = filteredItems.filter(i => i.linha === this.filters.line);
+    const tipos = [...new Set(filteredItems.map(i => i.tipo).filter(Boolean))].sort();
+    const sel = document.getElementById('curTipoFilter');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t => `<option value="${esc(t)}" ${t===cur?'selected':''}>${esc(t)}</option>`).join('');
+  },
+
+  applyFilters() {
+    const items = this._itemsRef || [];
+    const { q, cat, line, tipo, grid } = this.filters;
+    const qn = q ? q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') : '';
+    this.filtered = items.filter(i => {
+      if (cat && i.categoria !== cat) return false;
+      if (line && i.linha !== line) return false;
+      if (tipo && i.tipo !== tipo) return false;
+      if (grid === 'on' && i.no_grid) return false;
+      if (grid === 'off' && !i.no_grid) return false;
+      if (qn) {
+        const h = [i.produto_base, i.modelo, i.variacao, i.pn, i.codigo_principal, i.categoria, i.linha, i.tipo].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        if (!h.includes(qn)) return false;
+      }
+      return true;
+    });
+  },
+
+  getVisiblePage() {
+    const start = (this.page-1) * this.pageSize;
+    return this.filtered.slice(start, start + this.pageSize);
+  },
+
+  render() {
+    this.applyFilters();
+    const tb = document.getElementById('curTbody');
+    const visible = this.getVisiblePage();
+    if (visible.length === 0) {
+      tb.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--txt3);padding:30px">Nenhum item para os filtros atuais</td></tr>';
+    } else {
+      tb.innerHTML = visible.map(i => {
+        const sel = this.selected.has(i.pn);
+        const noGrid = !!i.no_grid;
+        const seloHTML = i.selo ? `<span style="display:inline-block;font-size:9px;font-weight:700;color:#fff;padding:2px 6px;border-radius:3px;background:${i.selo==='Ideale'?'#6b3fcc':i.selo==='Slim'?'#1a7a35':i.selo==='Safira'?'#0f8b8d':i.selo==='Lisse'?'#1e5fb3':i.selo==='Jeri'?'#d97706':'#666'}">${esc(i.selo)}</span>` : '';
+        return `<tr class="${sel?'sel':''} ${noGrid?'no-grid':''}" data-pn="${esc(i.pn)}">
+          <td><input type="checkbox" class="cur-row-chk" ${sel?'checked':''}></td>
+          <td class="cur-pn">${esc(i.pn)}</td>
+          <td style="font-family:Menlo,monospace;font-size:11px;color:var(--txt2)">${esc(i.codigo_principal||'')}</td>
+          <td>${esc(i.produto_base||'—')}</td>
+          <td>${esc(i.modelo||'')}</td>
+          <td>${esc(i.variacao||'')}</td>
+          <td>${esc(i.categoria||'')}</td>
+          <td>${esc(i.linha||'')}</td>
+          <td>${esc(i.tipo||'')}</td>
+          <td>${seloHTML}</td>
+          <td style="text-align:center"><span class="cur-grid-tag ${noGrid?'off':'on'}">${noGrid?'OFF':'ON'}</span></td>
+        </tr>`;
+      }).join('');
+      // bind dos checkboxes
+      tb.querySelectorAll('.cur-row-chk').forEach(chk => {
+        chk.addEventListener('change', e => {
+          const pn = e.target.closest('tr').dataset.pn;
+          if (e.target.checked) this.selected.add(pn);
+          else this.selected.delete(pn);
+          e.target.closest('tr').classList.toggle('sel', e.target.checked);
+          this.renderActionbar();
+          this.syncHeaderCheck();
+        });
+      });
+    }
+    // pager
+    const total = this.filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / this.pageSize));
+    document.getElementById('curPager').innerHTML = `
+      <button ${this.page<=1?'disabled':''} data-act="first">«</button>
+      <button ${this.page<=1?'disabled':''} data-act="prev">‹ Anterior</button>
+      <span class="pager-info">${this.page} / ${totalPages}</span>
+      <button ${this.page>=totalPages?'disabled':''} data-act="next">Próxima ›</button>
+      <button ${this.page>=totalPages?'disabled':''} data-act="last">»</button>
+      <span style="margin-left:10px">${total} itens filtrados · ${this.selected.size} selecionados</span>
+    `;
+    document.getElementById('curPager').querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        const a = b.dataset.act;
+        if (a === 'first') this.page = 1;
+        else if (a === 'prev') this.page = Math.max(1, this.page-1);
+        else if (a === 'next') this.page = Math.min(totalPages, this.page+1);
+        else if (a === 'last') this.page = totalPages;
+        this.render();
+      });
+    });
+    document.getElementById('curCountInfo').textContent = `${(this._itemsRef||[]).length} itens · ${total} filtrados · ${this.selected.size} selecionados`;
+    this.renderActionbar();
+    this.syncHeaderCheck();
+  },
+
+  syncHeaderCheck() {
+    const visible = this.getVisiblePage();
+    const chk = document.getElementById('curChkAll');
+    if (visible.length === 0) { chk.checked = false; chk.indeterminate = false; return; }
+    const selCount = visible.filter(i => this.selected.has(i.pn)).length;
+    chk.checked = selCount === visible.length;
+    chk.indeterminate = selCount > 0 && selCount < visible.length;
+  },
+
+  renderActionbar() {
+    const ab = document.getElementById('curActionbar');
+    const n = this.selected.size;
+    document.getElementById('curAbCount').textContent = n;
+    ab.classList.toggle('on', n > 0);
+  },
+
+  clearSelection() { this.selected.clear(); this.render(); },
+
+  // ── MODO COLAR PNs ──
+  pasteApply(addToSelection) {
+    const txt = document.getElementById('curPasteArea').value;
+    if (!txt.trim()) return;
+    // separa por vírgula, espaço, ponto-e-vírgula ou quebra de linha
+    const tokens = txt.split(/[\s,;]+/).map(t => t.trim()).filter(Boolean);
+    const items = this._itemsRef || [];
+    const itemMap = new Map(items.map(i => [i.pn, i]));
+    if (!addToSelection) this.selected.clear();
+    let found = 0, notFound = [];
+    tokens.forEach(t => {
+      if (itemMap.has(t)) { this.selected.add(t); found++; }
+      else notFound.push(t);
+    });
+    const res = `${found} encontrado(s)${notFound.length ? ' · ' + notFound.length + ' não encontrado(s)' : ''}`;
+    document.getElementById('curPasteResult').textContent = res;
+    if (notFound.length && notFound.length <= 10) {
+      document.getElementById('curPasteResult').textContent += `: ${notFound.join(', ')}`;
+    }
+    this.render();
+    toast(`${found} PNs selecionados`, 'ok');
+  },
+
+  // ── MODO BUSCA RÁPIDA ──
+  quickSearch(q) {
+    const box = document.getElementById('curQuickResults');
+    if (!q || q.length < 2) { box.innerHTML = ''; return; }
+    const qn = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const items = this._itemsRef || [];
+    const matches = items.filter(i => {
+      const h = [i.pn, i.produto_base, i.modelo, i.variacao].join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return h.includes(qn);
+    }).slice(0, 30);
+    box.innerHTML = matches.map(i => {
+      const added = this.selected.has(i.pn);
+      return `<div class="cur-quick-result ${added?'added':''}" data-pn="${esc(i.pn)}">
+        <span class="pn">${esc(i.pn)}</span>
+        <span>${esc(i.produto_base||'')} ${i.modelo?' · '+esc(i.modelo):''} ${i.variacao?' · '+esc(i.variacao):''}</span>
+      </div>`;
+    }).join('') || '<div style="padding:8px;color:var(--txt3);font-size:11px">Nenhum resultado.</div>';
+    box.querySelectorAll('.cur-quick-result:not(.added)').forEach(el => {
+      el.addEventListener('click', () => {
+        this.selected.add(el.dataset.pn);
+        el.classList.add('added');
+        this.render();
+      });
+    });
+  },
+
+  // ═══ AÇÕES ═══
+  openAction(action) {
+    if (this.selected.size === 0) { toast('Nenhum item selecionado','err'); return; }
+    if (action === 'agrupar')   this.openAgrupar();
+    if (action === 'grid')      this.openGrid();
+    if (action === 'mover')     this.openMover();
+    if (action === 'tipo')      this.openTipo();
+    if (action === 'selo')      this.openSelo();
+    if (action === 'renomear')  this.openRenomear();
+    if (action === 'subgrupo')  this.openSubgrp();
+  },
+
+  // --- AGRUPAR ---
+  openAgrupar() {
+    document.getElementById('curAgrupCount').textContent = this.selected.size;
+    document.getElementById('curAgrupTarget').value = '';
+    // datalist com produtos base existentes
+    const bases = [...new Set((this._itemsRef||[]).map(i => i.produto_base).filter(Boolean))].sort();
+    document.getElementById('curAgrupList').innerHTML = bases.map(b=>`<option value="${esc(b)}">`).join('');
+    this.updateAgrupPreview();
+    document.getElementById('curAgrupOvl').classList.add('o');
+  },
+  updateAgrupPreview() {
+    const target = document.getElementById('curAgrupTarget').value.trim();
+    const sel = this.getSelectedItems().slice(0,5);
+    document.getElementById('curAgrupPreview').innerHTML = sel.map(i =>
+      `<div><strong style="color:var(--red)">${esc(i.pn)}</strong>: ${esc(i.produto_base||'?')} → <strong>${esc(target||'(escolha um nome)')}</strong></div>`
+    ).join('') + (this.selected.size > 5 ? `<div style="color:var(--txt3);margin-top:4px">+ ${this.selected.size - 5} outros</div>` : '');
+  },
+  async doAgrupar() {
+    const target = document.getElementById('curAgrupTarget').value.trim();
+    if (!target) { toast('Informe o nome do Produto Base','err'); return; }
+    await this.mutate(items => {
+      items.forEach(i => { if (this.selected.has(i.pn)) { i.produto_base = target; i._edited = true; } });
+    });
+    document.getElementById('curAgrupOvl').classList.remove('o');
+    toast(`${this.selected.size} itens agrupados em "${target}"`,'ok');
+  },
+
+  // --- SEPARAR ---
+  // --- GRID on/off ---
+  openGrid() {
+    document.getElementById('curGridCount').textContent = this.selected.size;
+    document.getElementById('curGridAction').value = 'show';
+    document.getElementById('curGridOvl').classList.add('o');
+  },
+  async doGrid() {
+    const action = document.getElementById('curGridAction').value;
+    await this.mutate(items => {
+      items.forEach(i => {
+        if (this.selected.has(i.pn)) {
+          if (action === 'show') delete i.no_grid;
+          else if (action === 'hide') i.no_grid = true;
+          else if (action === 'toggle') { if (i.no_grid) delete i.no_grid; else i.no_grid = true; }
+          i._edited = true;
+        }
+      });
+    });
+    document.getElementById('curGridOvl').classList.remove('o');
+    toast('Visibilidade atualizada','ok');
+  },
+
+  // --- MOVER (categoria/subgrupo) ---
+  openMover() {
+    document.getElementById('curMoverCount').textContent = this.selected.size;
+    document.getElementById('curMoverCat').value = '';
+    document.getElementById('curMoverLine').value = '';
+    const items = this._itemsRef || [];
+    const cats = [...new Set(items.map(i => i.categoria).filter(Boolean))].sort();
+    const lines = [...new Set(items.map(i => i.linha).filter(Boolean))].sort();
+    document.getElementById('curMoverCatList').innerHTML = cats.map(c=>`<option value="${esc(c)}">`).join('');
+    document.getElementById('curMoverLineList').innerHTML = lines.map(l=>`<option value="${esc(l)}">`).join('');
+    document.getElementById('curMoverOvl').classList.add('o');
+  },
+  async doMover() {
+    const cat = document.getElementById('curMoverCat').value.trim();
+    const line = document.getElementById('curMoverLine').value.trim();
+    if (!cat && !line) { toast('Informe pelo menos uma categoria ou subgrupo','err'); return; }
+    await this.mutate(items => {
+      items.forEach(i => {
+        if (this.selected.has(i.pn)) {
+          if (cat) i.categoria = cat;
+          if (line) i.linha = line;
+          i._edited = true;
+        }
+      });
+    });
+    document.getElementById('curMoverOvl').classList.remove('o');
+    toast(`${this.selected.size} itens movidos`,'ok');
+  },
+
+  // --- RENOMEAR LOTE ---
+  openRenomear() {
+    document.getElementById('curRenameCount').textContent = this.selected.size;
+    document.getElementById('curRenameField').value = 'produto_base';
+    document.getElementById('curRenameMode').value = 'set';
+    document.getElementById('curRenameValue').value = '';
+    document.getElementById('curRenameFind').value = '';
+    this.updateRenamePreview();
+    document.getElementById('curRenameOvl').classList.add('o');
+  },
+  renameApply(value, mode, oldVal, find) {
+    if (mode === 'set') return value;
+    if (mode === 'prefix') return value + (oldVal||'');
+    if (mode === 'suffix') return (oldVal||'') + value;
+    if (mode === 'replace') {
+      if (!find) return oldVal;
+      return (oldVal||'').split(find).join(value);
+    }
+    return oldVal;
+  },
+  updateRenamePreview() {
+    const field = document.getElementById('curRenameField').value;
+    const mode = document.getElementById('curRenameMode').value;
+    const value = document.getElementById('curRenameValue').value;
+    const find = document.getElementById('curRenameFind').value;
+    document.getElementById('curRenameFindWrap').style.display = mode === 'replace' ? 'block' : 'none';
+    const lblMap = { set:'Novo valor', replace:'Substituir por', prefix:'Texto a adicionar antes', suffix:'Texto a adicionar depois' };
+    document.getElementById('curRenameValueLbl').textContent = lblMap[mode] || 'Valor';
+    const sel = this.getSelectedItems().slice(0,5);
+    document.getElementById('curRenamePreview').innerHTML = sel.map(i => {
+      const old = i[field] || '';
+      const nv = this.renameApply(value, mode, old, find);
+      return `<div><strong style="color:var(--red)">${esc(i.pn)}</strong>: <em>${esc(old||'(vazio)')}</em> → <strong>${esc(nv||'(vazio)')}</strong></div>`;
+    }).join('') + (this.selected.size > 5 ? `<div style="color:var(--txt3);margin-top:4px">+ ${this.selected.size - 5} outros</div>` : '');
+  },
+  async doRenomear() {
+    const field = document.getElementById('curRenameField').value;
+    const mode = document.getElementById('curRenameMode').value;
+    const value = document.getElementById('curRenameValue').value;
+    const find = document.getElementById('curRenameFind').value;
+    if (mode === 'replace' && !find) { toast('Informe o trecho a encontrar','err'); return; }
+    if (mode !== 'replace' && !value && mode === 'set') {
+      if (!confirm('Definir o campo como vazio para todos os selecionados?')) return;
+    }
+    await this.mutate(items => {
+      items.forEach(i => {
+        if (this.selected.has(i.pn)) {
+          i[field] = this.renameApply(value, mode, i[field] || '', find);
+          i._edited = true;
+        }
+      });
+    });
+    document.getElementById('curRenameOvl').classList.remove('o');
+    toast(`${this.selected.size} itens renomeados`,'ok');
+  },
+
+  // --- SELO (Linha de Marca) ---
+  openSelo() {
+    document.getElementById('curSeloCount').textContent = this.selected.size;
+    document.getElementById('curSeloValue').value = '';
+    document.getElementById('curSeloOvl').classList.add('o');
+  },
+  async doSelo() {
+    const val = document.getElementById('curSeloValue').value;
+    await this.mutate(items => {
+      items.forEach(i => {
+        if (this.selected.has(i.pn)) {
+          if (val) i.selo = val;
+          else delete i.selo;
+          i._edited = true;
+        }
+      });
+    });
+    document.getElementById('curSeloOvl').classList.remove('o');
+    toast(`Linha aplicada em ${this.selected.size} itens`,'ok');
+  },
+
+  // --- TIPO ---
+  openTipo() {
+    document.getElementById('curTipoCount').textContent = this.selected.size;
+    document.getElementById('curTipoName').value = '';
+    const tipos = [...new Set((this._itemsRef||[]).map(i => i.tipo).filter(Boolean))].sort();
+    document.getElementById('curTipoList').innerHTML = tipos.map(t=>`<option value="${esc(t)}">`).join('');
+    document.getElementById('curTipoOvl').classList.add('o');
+  },
+  async doTipo() {
+    const name = document.getElementById('curTipoName').value.trim();
+    if (!name) {
+      if (!confirm('Limpar o Tipo dos selecionados?')) return;
+    }
+    await this.mutate(items => {
+      items.forEach(i => {
+        if (this.selected.has(i.pn)) {
+          if (name) i.tipo = name;
+          else delete i.tipo;
+          i._edited = true;
+        }
+      });
+    });
+    document.getElementById('curTipoOvl').classList.remove('o');
+    this.refreshTipoFilter();
+    toast(`Tipo aplicado em ${this.selected.size} itens`,'ok');
+  },
+
+  // --- SUBGRUPO ---
+  openSubgrp() {
+    document.getElementById('curSubgrpCount').textContent = this.selected.size;
+    document.getElementById('curSubgrpName').value = '';
+    const lines = [...new Set((this._itemsRef||[]).map(i => i.linha).filter(Boolean))].sort();
+    document.getElementById('curSubgrpList').innerHTML = lines.map(l=>`<option value="${esc(l)}">`).join('');
+    document.getElementById('curSubgrpOvl').classList.add('o');
+  },
+  async doSubgrp() {
+    const name = document.getElementById('curSubgrpName').value.trim();
+    if (!name) { toast('Informe o nome do subgrupo','err'); return; }
+    await this.mutate(items => {
+      items.forEach(i => { if (this.selected.has(i.pn)) { i.linha = name; i._edited = true; } });
+    });
+    document.getElementById('curSubgrpOvl').classList.remove('o');
+    toast(`${this.selected.size} itens em "${name}"`,'ok');
+  },
+
+  // ═══ helpers ═══
+  getSelectedItems() {
+    const items = this._itemsRef || [];
+    return items.filter(i => this.selected.has(i.pn));
+  },
+
+  // aplica mutação, salva local, atualiza UI
+  async mutate(fn) {
+    const items = await DB.getItems();
+    fn(items);
+    await DB.setItems(items, { toFirebase: false });
+    DB.invalidate(); // força reload em outras views
+    DB._cache = items; // mas mantém o cache atualizado
+    this._itemsRef = items;
+    this.render();
+    this.updatePublishBar();
+  },
+
+  // ═══ publish / reset / export ═══
+  updatePublishBar() {
+    const has = DB.hasLocalChanges();
+    document.getElementById('curPublishBar').style.display = has ? 'flex' : 'none';
+    document.getElementById('curadoriaBadge').style.display = has ? 'inline-block' : 'none';
+    const sb = document.getElementById('curSyncStatus');
+    if (sb) {
+      if (has) { sb.className = 'sync-badge sync-local'; sb.innerHTML = '<span class="sync-dot"></span>Alterações locais'; }
+      else { sb.className = 'sync-badge sync-ok'; sb.innerHTML = '<span class="sync-dot"></span>Sem alterações'; }
+    }
+  },
+  async publish() {
+    if (!confirm('Publicar todas as alterações no Firebase? Isto sobrescreve o catálogo oficial.')) return;
+    const ok = await DB.publishToFirebase();
+    if (ok) { toast('Catálogo publicado no Firebase','ok'); this.updatePublishBar(); }
+    else toast('Falha ao publicar','err');
+  },
+  async resetLocal() {
+    if (!confirm('Descartar TODAS as alterações locais e voltar à versão do Firebase?')) return;
+    await DB.resetLocal();
+    this._itemsRef = await DB.getItems();
+    this.selected.clear();
+    this.render();
+    this.updatePublishBar();
+    toast('Alterações descartadas','ok');
+  },
+  // gera string do produtos.js para download e/ou sincronizar com localStorage do catálogo
+  _buildItemsForPublish() {
+    return (this._itemsRef || []).map(i => {
+      const o = {};
+      ['produto_base','modelo','variacao','pn','codigo_principal','categoria','linha','tipo','selo','promocao','tag_novo','tag_top','no_grid','split','card_img','img_data'].forEach(k => {
+        if (i[k]) o[k] = i[k];
+      });
+      return o;
+    });
+  },
+
+  // sincroniza com o localStorage do catálogo público (chave 'vaspi_catalogo_preview')
+  // só funciona se admin e catálogo estiverem na MESMA ORIGIN (mesmo servidor)
+  _syncCatalogoLocalStorage() {
+    try {
+      const items = this._buildItemsForPublish();
+      localStorage.setItem('vaspi_catalogo_preview', JSON.stringify({ items, ts: Date.now() }));
+      return true;
+    } catch(e) { return false; }
+  },
+
+  exportJS() {
+    const items = this._buildItemsForPublish();
+    const content = 'window.PRODUTOS = ' + JSON.stringify(items) + ';';
+    const blob = new Blob([content], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const d = new Date(), pad = n => String(n).padStart(2,'0');
+    const ts = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}h${pad(d.getMinutes())}`;
+    a.download = `produtos_${ts}.js`;   // nome carimbado: cada download é um backup, não sobrescreve
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Backup baixado: ${a.download}`,'ok');
+  },
+
+  openPreview() {
+    // detecta se está em file:// ou em servidor (http(s)://)
+    const isFile = location.protocol === 'file:';
+    this._syncCatalogoLocalStorage();
+    if (isFile) {
+      // Em file://: localStorage NÃO compartilha entre HTMLs. Oferece download.
+      if (confirm('Você está abrindo direto do disco (file://).\n\nPra ver as alterações no catálogo, é necessário:\n1. Baixar o produtos.js atualizado (vou fazer isso agora)\n2. Substituir o produtos.js da pasta do catálogo\n3. Abrir o catálogo (vai abrir em nova aba)\n\nContinuar?')) {
+        this.exportJS();
+        setTimeout(() => window.open('catalogo-digital.html', '_blank'), 600);
+      }
+    } else {
+      // Em servidor: localStorage compartilha → catálogo vê automaticamente
+      window.open('catalogo-digital.html?preview=local', '_blank');
+      toast('Catálogo aberto em nova aba com suas alterações','ok');
+    }
+  },
+};
+
+// debounce helper (caso ainda não exista no escopo)
+// (definido no início do módulo Cur)
+
+// helper esc (caso seja necessário replicar — já existe globalmente no admin)
+// (não duplicar a função esc que já existe)
+
+async function startApp() {
+  setupNav();
+  setupImport();
+  setupTableEvents();
+  setupEditModal();
+  setupMoveModal();
+  setupRenameModal();
+  setupAgruparModal();
+  setupExport();
+  setupGrpSearch();
+  Cur.setup();
+  Vit.setup();
+  await updateDash();
+  // mostra barra de publicação se há mudanças locais pendentes
+  Cur.updatePublishBar();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VITRINE — visão por cards (igual ao catálogo) + organização visual
+// ══════════════════════════════════════════════════════════════════
+const Vit = {
+  _items: null,
+  ctx: null,          // {cat, line, base} do card aberto
+  sel: new Set(),     // PNs selecionados dentro do card aberto (modal)
+  selCards: new Set(),// chaves de cards selecionados no grid (pra agrupar)
+  filters: { q:'', cat:'', line:'', hidden:false },
+
+  setup() {
+    document.getElementById('vitSearch').addEventListener('input', deb(e => { this.filters.q = e.target.value; this.renderCards(); }, 200));
+    document.getElementById('vitCat').addEventListener('change', e => { this.filters.cat = e.target.value; this.refreshLineFilter(); this.renderCards(); });
+    document.getElementById('vitLine').addEventListener('change', e => { this.filters.line = e.target.value; this.renderCards(); });
+    document.getElementById('vitShowHidden').addEventListener('change', e => { this.filters.hidden = e.target.checked; this.renderCards(); });
+    document.getElementById('vitLoadFile').addEventListener('click', () => this.loadFromFile());
+    document.getElementById('vitApplyPatch').addEventListener('click', () => this.aplicarPatch());
+    document.getElementById('vitPatchApply').addEventListener('click', () => this.doApplyPatch());
+    document.getElementById('vitSplitAll').addEventListener('click', () => this.act('split', false));
+    document.getElementById('vitJoinAll').addEventListener('click', () => this.act('join', false));
+    document.getElementById('vitSplitSel').addEventListener('click', () => this.act('split', true));
+    document.getElementById('vitJoinSel').addEventListener('click', () => this.act('join', true));
+    document.getElementById('vitAgrupar').addEventListener('click', () => this.agruparSelecionados());
+    document.getElementById('vitMover').addEventListener('click', () => this.openMover());
+    document.getElementById('vitMoveSave').addEventListener('click', () => this.doMover());
+    document.getElementById('vitSelClear').addEventListener('click', () => this.clearCardSel());
+    document.getElementById('vitRename').addEventListener('click', () => this.renameCard());
+  },
+
+  // edita o NOME do produto (produto_base) deste card — vale p/ todos os modelos da base
+  async renameCard() {
+    if (!this.ctx) return;
+    const atual = this.ctx.base;
+    const novo = (prompt('Novo nome do produto:', atual) || '').trim();
+    if (!novo || novo === atual) return;
+    const pns = new Set(this.baseItems().map(i => i.pn));
+    await this.mutate(items => { items.forEach(i => { if (pns.has(i.pn)) { i.produto_base = novo; i._edited = true; } }); });
+    // a chave do card muda (inclui o nome) — reconstrói o ctx pra manter o modal certo
+    const prefix = `${this.ctx.cat}||${this.ctx.line}||`;
+    const suffix = this.ctx.key.slice((prefix + atual).length);  // '' ou '||@modelo'
+    this.ctx.base = novo;
+    this.ctx.key = prefix + novo + suffix;
+    document.getElementById('vitCardTitle').textContent = suffix ? (novo + suffix.replace('||@', ' ')) : novo;
+    this.renderCardItems();
+    toast('Nome atualizado.', 'ok');
+  },
+
+  updateSelBar() {
+    const n = this.selCards.size;
+    document.getElementById('vitSelCount').textContent = n;
+    document.getElementById('vitSelBar').style.display = n > 0 ? 'flex' : 'none';
+  },
+  clearCardSel() {
+    this.selCards.clear();
+    document.querySelectorAll('#vitGrid .vit-card-chk').forEach(c => { c.checked = false; const card = c.closest('.vit-card'); if (card) card.style.borderColor = 'var(--brd)'; });
+    this.updateSelBar();
+  },
+
+  // base numérica do PN de um card (ex.: "1011.03" -> 1011)
+  pnBaseDe(g) { return parseInt(String((g.items[0]||{}).pn||'').split('.')[0], 10) || 0; },
+
+  async agruparSelecionados() {
+    const grupos = this.buildGroups(this._items||[]);
+    const sel = grupos.filter(g => this.selCards.has(g.key));
+    if (sel.length < 2) { toast('Selecione pelo menos 2 cards pra agrupar.', 'err'); return; }
+
+    // AVISO DE PN FORA DE SEQUÊNCIA: existe card NÃO selecionado com PN entre o
+    // menor e o maior selecionado? Se sim, o usuário "pulou" PNs no meio.
+    const bases = sel.map(g => this.pnBaseDe(g));
+    const min = Math.min(...bases), max = Math.max(...bases);
+    const selKeys = this.selCards;
+    const pulados = grupos.filter(g => !selKeys.has(g.key)).filter(g => { const b = this.pnBaseDe(g); return b > min && b < max; });
+    if (pulados.length) {
+      const exemplos = pulados.slice(0,6).map(g => `${this.pnBaseDe(g)} ${g.name}`).join('\n  • ');
+      const ok = confirm(`⚠️ ATENÇÃO — seleção fora de sequência!\n\nVocê selecionou do PN ${min} até ${max}, mas ${pulados.length} card(s) no meio NÃO foram selecionados:\n  • ${exemplos}${pulados.length>6?'\n  • …':''}\n\nIsso costuma ser engano (faltou marcar algum). Quer agrupar mesmo assim?`);
+      if (!ok) return;
+    }
+
+    // nome do produto agrupado
+    const nome = (prompt('Nome do Produto Base agrupado:', sel[0].base) || '').trim();
+    if (!nome) return;
+
+    const pns = new Set();
+    sel.forEach(g => g.items.forEach(i => pns.add(i.pn)));
+    await this.mutate(items => {
+      // vira UM produto só: renomeia e limpa o split (senão continuariam cards separados)
+      items.forEach(i => { if (pns.has(i.pn)) { i.produto_base = nome; delete i.split; i._edited = true; } });
+    });
+    this.clearCardSel();
+    toast(`${sel.length} cards agrupados em "${nome}".`, 'ok');
+  },
+
+  async open() {
+    // getItems já é determinístico (local -> arquivo -> nuvem)
+    this._items = await DB.getItems();
+    Cur._itemsRef = this._items;
+    this.refreshFilters();
+    this.refreshLineFilter();
+    this.renderCards();
+  },
+
+  // MESCLA as mudanças do assistente (_patch.json) no trabalho atual, por codigo_principal.
+  // Atualiza só os campos do patch nos itens citados; NÃO apaga nada do resto.
+  async aplicarPatch() {
+    // tenta carregar o patch automaticamente (script tag ou fetch); senão deixa colar
+    let patch = window.CATALOGO_PATCH || null;
+    if (!patch) { try { const r = await fetch('_patch.js?t=' + Date.now(), { cache: 'no-store' }); const t = await r.text(); patch = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) {} }
+    if (!patch) { try { const r = await fetch('_patch.json?t=' + Date.now(), { cache: 'no-store' }); patch = await r.json(); } catch (e) {} }
+    const ta = document.getElementById('vitPatchText');
+    const st = document.getElementById('vitPatchStatus');
+    if (patch) { ta.value = JSON.stringify(patch); st.textContent = `Atualização carregada (${(patch.itens||patch).length} itens).`; }
+    else { ta.value = ''; st.textContent = 'Não carregou sozinho — cole o texto abaixo.'; }
+    document.getElementById('vitPatchOvl').classList.add('o');
+  },
+  async doApplyPatch() {
+    let patch = null;
+    try { patch = JSON.parse(document.getElementById('vitPatchText').value.trim()); }
+    catch (e) { toast('O texto colado não é um patch válido.', 'err'); return; }
+    const itens = patch && patch.itens ? patch.itens : (Array.isArray(patch) ? patch : null);
+    if (!itens || !itens.length) { toast('Patch sem itens.', 'err'); return; }
+    let n = 0, achou = 0;
+    await this.mutate(items => {
+      const byCod = {};
+      items.forEach(i => { byCod[String(i.codigo_principal||'').trim()] = i; });
+      itens.forEach(pt => {
+        const it = byCod[String(pt.codigo_principal||'').trim()];
+        if (it) { achou++; Object.keys(pt).forEach(k => { if (k !== 'codigo_principal') it[k] = pt[k]; }); it._edited = true; n++; }
+      });
+    });
+    document.getElementById('vitPatchOvl').classList.remove('o');
+    this.refreshFilters(); this.refreshLineFilter(); this.renderCards();
+    if (!achou) toast('Aplicado em 0 itens — os códigos do patch não bateram com seus dados.', 'err');
+    else toast(`Atualização aplicada em ${n} itens — seu trabalho foi preservado.`, 'ok');
+  },
+
+  // carrega o produtos.js SEMPRE FRESCO (sem cache) como dados LOCAIS, sem publicar
+  async loadFromFile() {
+    let items = null;
+    try {
+      const r = await fetch('produtos.js?t=' + Date.now(), { cache: 'no-store' });
+      const t = await r.text();
+      items = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
+    } catch (e) {
+      if (window.PRODUTOS && window.PRODUTOS.length) items = JSON.parse(JSON.stringify(window.PRODUTOS));
+    }
+    if (!items || !items.length) { toast('Não consegui ler o produtos.js da pasta.', 'err'); return; }
+    if (!confirm(`Carregar o catálogo do arquivo (${items.length} itens, versão atual) como dados LOCAIS?\n\nSubstitui sua edição local atual e NÃO publica no Firebase — você organiza aqui e publica quando quiser.`)) return;
+    await DB.setItems(items, { toFirebase: false });  // só local
+    DB._cache = items; this._items = items; Cur._itemsRef = items;
+    this.refreshFilters(); this.refreshLineFilter(); this.renderCards();
+    Cur.updatePublishBar(); if (typeof updateDash === 'function') updateDash();
+    toast(`Carregado ${items.length} itens do arquivo (versão atual). Organize à vontade.`, 'ok');
+  },
+
+  // reordena (arrastar): põe o card arrastado logo antes do card alvo, na MESMA linha
+  async reorderCard(dragKey, targetKey) {
+    if (!dragKey || dragKey === targetKey) return;
+    const groups = this.buildGroups(this._items||[]);
+    const dg = groups.find(g=>g.key===dragKey), tg = groups.find(g=>g.key===targetKey);
+    if (!dg || !tg) return;
+    if (dg.cat !== tg.cat || dg.line !== tg.line) { toast('Arraste só dentro da mesma linha. Pra mudar de linha, use "Mover para…".','err'); return; }
+    const dragPns = new Set(dg.items.map(i=>i.pn));
+    const targetFirst = tg.items[0].pn;
+    await this.mutate(items => {
+      const moved = items.filter(i=>dragPns.has(i.pn));
+      const rest = items.filter(i=>!dragPns.has(i.pn));
+      let idx = rest.findIndex(i=>i.pn===targetFirst); if (idx<0) idx = rest.length;
+      rest.splice(idx, 0, ...moved);
+      items.length=0; items.push(...rest);
+    });
+  },
+
+  // manda uma LINHA inteira pro topo da sua categoria
+  async lineToTop(cat, line) {
+    await this.mutate(items => {
+      const linePns = new Set(items.filter(i=>(i.categoria||'')===cat && (i.linha||'')===line).map(i=>i.pn));
+      const moved = items.filter(i=>linePns.has(i.pn));
+      const rest = items.filter(i=>!linePns.has(i.pn));
+      let idx = rest.findIndex(i=>(i.categoria||'')===cat); if (idx<0) idx = rest.length;
+      rest.splice(idx, 0, ...moved);
+      items.length=0; items.push(...rest);
+    });
+    toast(`"${line}" foi pro topo de ${cat}.`, 'ok');
+  },
+
+  // mover cards selecionados para outra categoria/linha
+  openMover() {
+    if (!this.selCards.size) { toast('Selecione cards primeiro (caixinha).','err'); return; }
+    document.getElementById('vitMoveCount').textContent = this.selCards.size;
+    const cats = [...new Set((this._items||[]).map(i=>i.categoria).filter(Boolean))].sort();
+    const csel = document.getElementById('vitMoveCat');
+    csel.innerHTML = cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    csel.onchange = () => this._fillMoveLines();
+    this._fillMoveLines();
+    document.getElementById('vitMoveLine').value = '';
+    document.getElementById('vitMoveOvl').classList.add('o');
+  },
+  _fillMoveLines() {
+    const cat = document.getElementById('vitMoveCat').value;
+    const lines = [...new Set((this._items||[]).filter(i=>i.categoria===cat).map(i=>i.linha).filter(Boolean))].sort();
+    document.getElementById('vitMoveLineList').innerHTML = lines.map(l=>`<option value="${esc(l)}">`).join('');
+  },
+  async doMover() {
+    const cat = document.getElementById('vitMoveCat').value;
+    const line = document.getElementById('vitMoveLine').value.trim();
+    if (!cat || !line) { toast('Escolha a categoria e a linha.','err'); return; }
+    const groups = this.buildGroups(this._items||[]);
+    const sel = groups.filter(g=>this.selCards.has(g.key));
+    const pns = new Set(); sel.forEach(g=>g.items.forEach(i=>pns.add(i.pn)));
+    await this.mutate(items => {
+      items.forEach(i=>{ if(pns.has(i.pn)){ i.categoria=cat; i.linha=line; i._edited=true; } });
+      const moved = items.filter(i=>pns.has(i.pn));
+      const rest = items.filter(i=>!pns.has(i.pn));
+      let lastIdx=-1; rest.forEach((i,ix)=>{ if((i.categoria||'')===cat && (i.linha||'')===line) lastIdx=ix; });
+      const insAt = lastIdx>=0 ? lastIdx+1 : rest.length;
+      rest.splice(insAt, 0, ...moved);
+      items.length=0; items.push(...rest);
+    });
+    document.getElementById('vitMoveOvl').classList.remove('o');
+    this.clearCardSel();
+    toast(`${sel.length} card(s) movido(s) para ${cat} / ${line}.`, 'ok');
+  },
+
+  refreshFilters() {
+    const cats = [...new Set((this._items||[]).map(i => i.categoria).filter(Boolean))].sort();
+    const sel = document.getElementById('vitCat'); const cur = sel.value;
+    sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c => `<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  },
+  refreshLineFilter() {
+    const items = (this._items||[]).filter(i => !this.filters.cat || i.categoria === this.filters.cat);
+    const lines = [...new Set(items.map(i => i.linha).filter(Boolean))].sort();
+    const sel = document.getElementById('vitLine'); const cur = sel.value;
+    sel.innerHTML = '<option value="">Todas as linhas</option>' + lines.map(l => `<option value="${esc(l)}" ${l===cur?'selected':''}>${esc(l)}</option>`).join('');
+  },
+
+  // agrupa igual ao catálogo público: 1 card por (cat,linha,base[,@modelo se split])
+  buildGroups(items) {
+    const map = {}; let ord = 0;
+    items.forEach(i => {
+      const base = String(i.produto_base||'').trim(); if (!base) return;
+      const splitMod = !!i.split; const mod = String(i.modelo||'').trim();
+      const key = `${i.categoria||''}||${i.linha||''}||${base}${splitMod?('||@'+mod):''}`;
+      if (!map[key]) map[key] = { key, cat:i.categoria||'', line:i.linha||'', base, name:(splitMod&&mod)?(base+' '+mod):base, selo:'', items:[], hidden:true, _ord:ord++ };
+      const g = map[key];
+      g.items.push(i);
+      if (!g.selo && i.selo) g.selo = i.selo;
+      if (!i.no_grid) g.hidden = false;   // card é "oculto" só se TODOS os itens são no_grid
+    });
+    const all = Object.values(map);
+    all.forEach(g => g.items.sort((a,b)=>String(a.pn).localeCompare(String(b.pn),undefined,{numeric:true})));
+    all.sort((a,b)=>a._ord-b._ord);
+    return all;
+  },
+
+  imgCod(g){
+    // capa escolhida pelo usuário (card_img) tem prioridade; senão, 1º item
+    const cap = (g.items||[]).find(i => i.card_img);
+    if (cap) return String(cap.card_img).trim();
+    const it=g.items[0]||{}; return String(it.codigo_principal||'').trim() || String(it.pn||'').split('.')[0];
+  },
+  // o ITEM que representa a capa do card (pode ter img_data embutida)
+  cardCoverItem(g){
+    const cod = this.imgCod(g);
+    return (g.items||[]).find(i => String(i.codigo_principal||'').trim() === cod) || (g.items||[])[0] || {};
+  },
+  SELO_COLOR:{Slim:'#1a7a35',Safira:'#0f8b8d',Lisse:'#1e5fb3',Ideale:'#6b3fcc',Jeri:'#d97706'},
+  SELO_ORD:{'':0,'Slim':1,'Safira':2,'Lisse':3,'Ideale':4,'Jeri':5},
+  CAT_ORDER:{'Material Elétrico':1,'Iluminação':2,'Lâmpadas e Fontes':3,'Tubos e Conexões':4,'Acessórios':5,'Ferramentas':6,'Ventilação':7,'Antenas e Áudio/Vídeo':8,'Natal e Festiva':99},
+  _lineMin:{},   // min _ord por "categoria||linha" (calculado em renderCards)
+
+  // ordena em BLOCOS: categoria (ordem oficial) -> linha (1ª aparição, agrupa
+  // itens realocados de outras categorias) -> ordem do arquivo dentro da linha;
+  // e em "Instalação Residencial" respeita a ordem dos selos.
+  catalogSort(a, b) {
+    const cr = (this.CAT_ORDER[a.cat]||50) - (this.CAT_ORDER[b.cat]||50); if (cr) return cr;
+    const lr = (this._lineMin[a.cat+'||'+a.line]||0) - (this._lineMin[b.cat+'||'+b.line]||0); if (lr) return lr;
+    if (a.line===b.line && a.line==='Instalação Residencial') {
+      const s = (this.SELO_ORD[a.selo]??9) - (this.SELO_ORD[b.selo]??9); if (s) return s;
+    }
+    return a._ord - b._ord;
+  },
+
+  renderCards() {
+    const f = this.filters;
+    let groups = this.buildGroups(this._items||[]);
+    if (!f.hidden) groups = groups.filter(g => !g.hidden);
+    if (f.cat) groups = groups.filter(g => g.cat === f.cat);
+    if (f.line) groups = groups.filter(g => g.line === f.line);
+    if (f.q) { const qn = f.q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); groups = groups.filter(g => g.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').includes(qn)); }
+    // min _ord por linha (pra cada linha virar um bloco, mesmo com itens realocados)
+    this._lineMin = {};
+    groups.forEach(g => { const k = g.cat+'||'+g.line; if (this._lineMin[k]===undefined || g._ord < this._lineMin[k]) this._lineMin[k] = g._ord; });
+    groups.sort((a,b)=>this.catalogSort(a,b));
+    document.getElementById('vitCount').textContent = `${groups.length} cards`;
+    let lastCat=null, lastLine=null, html='';
+    groups.forEach(g => {
+      if (g.cat !== lastCat) {
+        const n = groups.filter(x=>x.cat===g.cat).length;
+        html += `<div style="grid-column:1/-1;margin:14px 0 2px;padding-bottom:6px;border-bottom:2px solid var(--red);display:flex;align-items:baseline;gap:8px"><h2 style="font-size:16px;color:var(--txt)">${esc(g.cat||'Outros')}</h2><span style="font-size:11px;color:var(--txt3)">${n} ${n===1?'card':'cards'}</span></div>`;
+        lastCat=g.cat; lastLine=null;
+      }
+      if ((g.line||'') !== lastLine) {
+        const topoBtn = g.line ? `<button class="vit-line-top" data-cat="${esc(g.cat)}" data-line="${esc(g.line)}" title="Mandar esta linha pro topo da categoria" style="font-size:10px;font-weight:600;color:var(--red);background:none;border:1px solid var(--brd);border-radius:4px;padding:1px 6px;cursor:pointer">⬆ Topo</button>` : '';
+        html += `<div style="grid-column:1/-1;margin:8px 0 0;display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px">${esc(g.line||'—')}</span>${topoBtn}</div>`;
+        lastLine=g.line||'';
+      }
+      const coverSrc = this.itemImgSrc(this.cardCoverItem(g));
+      const on = this.selCards.has(g.key);
+      const chk = `<input type="checkbox" class="vit-card-chk" data-key="${esc(g.key)}" ${on?'checked':''} title="Selecionar para agrupar" style="position:absolute;top:5px;left:5px;width:18px;height:18px;accent-color:var(--red);z-index:3;cursor:pointer;background:#fff;border-radius:3px">`;
+      const selo = g.selo ? `<span style="position:absolute;top:5px;left:28px;font-size:8px;font-weight:700;color:#fff;padding:2px 5px;border-radius:3px;background:${this.SELO_COLOR[g.selo]||'#666'}">${esc(g.selo)}</span>` : '';
+      const hid = g.hidden ? `<span style="position:absolute;top:5px;right:5px;font-size:8px;font-weight:700;color:#fff;padding:2px 5px;border-radius:3px;background:#b00">OCULTO</span>` : '';
+      html += `<div class="vit-card" draggable="true" data-key="${esc(g.key)}" data-cat="${esc(g.cat)}" data-line="${esc(g.line||'')}" style="border:2px solid ${on?'var(--red)':'var(--brd)'};border-radius:8px;overflow:hidden;cursor:grab;background:var(--surf);transition:box-shadow .12s" onmouseover="this.style.boxShadow='var(--sh2)'" onmouseout="this.style.boxShadow='none'">
+        <div style="position:relative;aspect-ratio:1;background:#f6f6f6;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:10px">sem imagem<img src="${coverSrc}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#f6f6f6" onerror="this.remove()">${chk}${selo}${hid}</div>
+        <div style="padding:6px 8px">
+          <div style="font-size:11px;font-weight:600;line-height:1.25;color:var(--txt);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(g.name)}</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px"><span style="color:var(--red);font-weight:700">PN ${esc(String((g.items[0]||{}).pn||'').split('.')[0])}</span> · ${g.items.length} ${g.items.length===1?'item':'itens'}</div>
+        </div>
+      </div>`;
+    });
+    document.getElementById('vitGrid').innerHTML = html || '<div style="color:var(--txt3);font-size:13px;padding:30px">Nenhum card com esses filtros.</div>';
+    document.querySelectorAll('#vitGrid .vit-card').forEach(el => el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('vit-card-chk')) return;  // clicar na caixinha não abre o card
+      this.openCard(el.dataset.key);
+    }));
+    document.querySelectorAll('#vitGrid .vit-card-chk').forEach(chk => chk.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = e.target.dataset.key;
+      if (e.target.checked) this.selCards.add(key); else this.selCards.delete(key);
+      const card = e.target.closest('.vit-card'); if (card) card.style.borderColor = e.target.checked ? 'var(--red)' : 'var(--brd)';
+      this.updateSelBar();
+    }));
+    // ARRASTAR pra reordenar (dentro da mesma linha)
+    document.querySelectorAll('#vitGrid .vit-card').forEach(el => {
+      el.addEventListener('dragstart', e => { this._dragKey = el.dataset.key; this._dragCat = el.dataset.cat; this._dragLine = el.dataset.line; e.dataTransfer.effectAllowed = 'move'; el.style.opacity = '.4'; });
+      el.addEventListener('dragend', e => { el.style.opacity = ''; document.querySelectorAll('#vitGrid .vit-card').forEach(c=>c.style.outline=''); });
+      el.addEventListener('dragover', e => {
+        e.preventDefault();
+        const ok = el.dataset.cat === this._dragCat && el.dataset.line === this._dragLine;
+        el.style.outline = ok ? '2px dashed var(--red)' : '2px dashed #ccc';
+      });
+      el.addEventListener('dragleave', e => { el.style.outline = ''; });
+      el.addEventListener('drop', e => { e.preventDefault(); el.style.outline=''; this.reorderCard(this._dragKey, el.dataset.key); });
+    });
+    // botão "Topo" das linhas
+    document.querySelectorAll('#vitGrid .vit-line-top').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      this.lineToTop(b.dataset.cat, b.dataset.line);
+    }));
+  },
+
+  openCard(key) {
+    const g = this.buildGroups(this._items||[]).find(x => x.key === key);
+    if (!g) return;
+    // guarda a CHAVE do card clicado — o modal mostra só os itens DESTE card
+    // (respeitando o split), não todos os itens do produto_base.
+    this.ctx = { key:g.key, cat:g.cat, line:g.line, base:g.base };
+    this.sel.clear();
+    document.getElementById('vitCardTitle').textContent = g.name;
+    document.getElementById('vitCardSub').textContent = `${g.cat} · ${g.line||'—'}`;
+    this.renderCardItems();
+    document.getElementById('vitCardOvl').classList.add('o');
+  },
+
+  // itens DESTE card (respeita o split) — evita mostrar itens já separados
+  cardItems() {
+    if (!this.ctx) return [];
+    const g = this.buildGroups(this._items||[]).find(x => x.key === this.ctx.key);
+    return g ? g.items : [];
+  },
+  // todos os itens do produto_base (usado pelas ações "todos")
+  baseItems() {
+    const c = this.ctx; if (!c) return [];
+    return (this._items||[]).filter(i => (i.categoria||'')===c.cat && (i.linha||'')===c.line && (i.produto_base||'')===c.base);
+  },
+  // código usado como capa do card atual (card_img escolhido ou 1º item)
+  cardCoverCod() {
+    const items = this.cardItems();
+    const cap = items.find(i => i.card_img);
+    if (cap) return String(cap.card_img).trim();
+    const it = items[0]||{}; return String(it.codigo_principal||'').trim();
+  },
+  renderCardItems() {
+    const items = this.cardItems();
+    const cover = this.cardCoverCod();
+    const itemHtml = (i) => {
+      const cod = String(i.codigo_principal||'').trim();
+      const on = this.sel.has(i.pn);
+      const isCover = cod && cod === cover;
+      const sub = i.variacao || '';
+      return `<label class="vit-it" data-pn="${esc(i.pn)}" style="border:1.5px solid ${on?'var(--red)':'var(--brd)'};border-radius:7px;overflow:hidden;cursor:pointer;background:var(--surf);display:block">
+        <div style="position:relative;aspect-ratio:1;background:#f6f6f6;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:9px">s/ imagem<img src="${this.itemImgSrc(i)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#f6f6f6" onerror="this.remove()"><input type="checkbox" class="vit-it-chk" data-pn="${esc(i.pn)}" ${on?'checked':''} style="position:absolute;top:4px;left:4px;width:16px;height:16px;accent-color:var(--red)"><span class="vit-it-cover" data-cod="${esc(cod)}" title="${isCover?'Capa atual (clique p/ voltar ao padrão)':'Usar esta imagem como capa do card'}" style="position:absolute;top:3px;right:3px;width:21px;height:21px;border-radius:50%;background:${isCover?'#f5b301':'rgba(255,255,255,.9)'};color:${isCover?'#fff':'#bbb'};display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)">${isCover?'★':'☆'}</span><span class="vit-it-photo" data-cod="${esc(cod)}" title="Trocar a foto desta variação (redimensiona e salva em imgs/)" style="position:absolute;bottom:3px;right:3px;width:21px;height:21px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer">📷</span></div>
+        <div style="padding:5px 6px">
+          <div style="font-size:10px;font-weight:700;color:var(--red)">${esc(i.pn)}</div>
+          <div style="font-size:10px;color:var(--txt);line-height:1.2">${esc(sub||'(único)')}</div>
+          <div style="font-size:9px;color:var(--txt3)">cód ${esc(cod||'—')}</div>
+        </div>
+      </label>`;
+    };
+    // agrupa as variações por MODELO — separa os modelos DENTRO do mesmo card
+    const byModel = {}, order = [];
+    items.forEach(i => { const m=(i.modelo||'').trim(); if(!(m in byModel)){byModel[m]=[];order.push(m);} byModel[m].push(i); });
+    let html = '';
+    order.forEach(m => {
+      if (m) html += `<div style="grid-column:1/-1;font-size:11px;font-weight:700;color:var(--txt2);border-bottom:1.5px solid var(--brd);padding-bottom:3px;margin:10px 0 2px">${esc(m)} <span style="color:var(--txt3);font-weight:400">· ${byModel[m].length}</span></div>`;
+      byModel[m].forEach(i => { html += itemHtml(i); });
+    });
+    document.getElementById('vitCardItems').innerHTML = html;
+    document.querySelectorAll('#vitCardItems .vit-it-chk').forEach(chk => chk.addEventListener('change', e => {
+      const pn = e.target.dataset.pn;
+      if (e.target.checked) this.sel.add(pn); else this.sel.delete(pn);
+      e.target.closest('.vit-it').style.borderColor = e.target.checked ? 'var(--red)' : 'var(--brd)';
+      const n = this.sel.size;
+      document.getElementById('vitSplitSel').disabled = n===0;
+      document.getElementById('vitJoinSel').disabled = n===0;
+    }));
+    document.querySelectorAll('#vitCardItems .vit-it-cover').forEach(el => el.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      this.setCover(el.dataset.cod);
+    }));
+    document.querySelectorAll('#vitCardItems .vit-it-photo').forEach(el => el.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      this.trocarFoto(el.dataset.cod);
+    }));
+  },
+
+  // ── TROCAR FOTO ── redimensiona e EMBUTE no dado (img_data) → atualiza na hora.
+  // Os arquivos imgs/<codigo>.jpg são gerados na exportação final (a partir do img_data).
+  IMG_MAX: 800,        // maior lado sugerido (px)
+  IMG_QUALITY: 0.85,   // qualidade JPEG
+
+  trocarFoto(cod) {
+    cod = String(cod||'').trim();
+    if (!cod) { toast('Sem código pra essa variação.', 'err'); return; }
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = async () => {
+      const file = inp.files && inp.files[0];
+      if (!file) return;
+      try {
+        const dataUrl = await this._resizeImage(file, this.IMG_MAX, this.IMG_QUALITY);
+        const pns = new Set(this.cardItems().filter(i => String(i.codigo_principal||'').trim() === cod).map(i => i.pn));
+        // se o código não estiver nos itens deste card (capa de outro), aplica por código em toda a base
+        if (!pns.size) this.baseItems().forEach(i => { if (String(i.codigo_principal||'').trim() === cod) pns.add(i.pn); });
+        await this.mutate(items => { items.forEach(i => { if (pns.has(i.pn)) { i.img_data = dataUrl; i._edited = true; } }); });
+        this._imgBust = Date.now();
+        this.renderCardItems();
+        toast('Foto trocada e atualizada.', 'ok');
+      } catch (e) { toast('Erro ao processar a imagem: ' + (e.message||e), 'err'); }
+    };
+    inp.click();
+  },
+
+  _resizeImage(file, maxSize, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);   // fundo branco (p/ PNG transparente)
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(img.src);
+        try { resolve(cv.toDataURL('image/jpeg', quality)); }
+        catch (e) { reject(new Error('não consegui ler a imagem')); }
+      };
+      img.onerror = () => reject(new Error('imagem inválida'));
+      img.src = URL.createObjectURL(file);
+    });
+  },
+
+  // src de imagem de um item: foto embutida (img_data) tem prioridade; senão imgs/<codigo>.jpg
+  itemImgSrc(item) {
+    if (item && item.img_data) return item.img_data;
+    const cod = String((item&&item.codigo_principal)||'').trim();
+    if (!cod) return '';
+    return 'imgs/' + cod + '.jpg' + (this._imgBust ? ('?v=' + this._imgBust) : '');
+  },
+
+  // define (ou limpa, se clicar na atual) a imagem de capa DESTE card
+  async setCover(cod) {
+    cod = String(cod||'').trim();
+    const items = this.cardItems();
+    const already = items.some(i => String(i.card_img||'').trim() === cod && cod);
+    const pns = new Set(items.map(i=>i.pn));
+    await this.mutate(its => { its.forEach(i => { if (pns.has(i.pn)) { if (already) delete i.card_img; else i.card_img = cod; i._edited = true; } }); });
+    this.renderCardItems();
+    toast(already ? 'Capa voltou ao padrão.' : 'Imagem de capa definida.', 'ok');
+  },
+
+  async act(mode, onlySelected) {
+    // "todos" age na BASE inteira; "selecionados" só nos itens marcados deste card
+    const pns = onlySelected ? new Set(this.sel) : new Set(this.baseItems().map(i=>i.pn));
+    if (!pns.size) return;
+    await this.mutate(items => {
+      items.forEach(i => { if (pns.has(i.pn)) { if (mode==='split') i.split = true; else delete i.split; i._edited = true; } });
+    });
+    this.sel.clear();
+    document.getElementById('vitSplitSel').disabled = true;
+    document.getElementById('vitJoinSel').disabled = true;
+    // se o card aberto deixou de existir (ex.: separou tudo), fecha; senão re-renderiza
+    if (onlySelected && this.cardItems().length) this.renderCardItems();
+    else document.getElementById('vitCardOvl').classList.remove('o');
+    toast(mode==='split' ? 'Separado por modelo.' : 'Juntado num card.', 'ok');
+  },
+
+  async mutate(fn) {
+    const items = await DB.getItems();
+    fn(items);
+    await DB.setItems(items, { toFirebase:false });
+    DB._cache = items; this._items = items; Cur._itemsRef = items;
+    this.renderCards();
+    Cur.updatePublishBar();
+  },
+};
+
+// Aguardar Firebase estar pronto
+document.addEventListener('firebase-ready', () => {
+  document.getElementById('loadingOverlay').style.display='none';
+  document.getElementById('lockScreen').style.display='flex';
+  setupLock();
+});
+
+// Timeout de segurança caso Firebase demore
+setTimeout(()=>{
+  if (!window._firebaseReady) {
+    document.getElementById('loadingOverlay').innerHTML='<div class="load-logo">VASPI</div><div style="color:var(--red);font-size:13px">Erro ao conectar ao Firebase.<br>Verifique sua conexão e recarregue.</div>';
+  }
+}, 8000);
+</script>
+</body>
+</html>
