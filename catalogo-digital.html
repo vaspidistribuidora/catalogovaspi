@@ -763,6 +763,16 @@ function applyAll() {
   // ordem dos selos dentro de "Instalação Residencial":
   // sem selo (0) → Ideale (1) → Slim (2) → Lisse (3)
   const SELO_ORD = { '': 0, 'Slim': 1, 'Safira': 2, 'Lisse': 3, 'Ideale': 4, 'Jeri': 5 };
+  // Garante que todo subgrupo (categoria+linha) fique contíguo na tela, mesmo
+  // que os itens dele não estejam em sequência dentro do produtos.json (ex.:
+  // um script de reclassificação mexeu só em alguns códigos espalhados pelo
+  // arquivo). Sem isso, renderBatch() imprime o header de subgrupo de novo
+  // toda vez que a linha "volta" depois de outra — bug que já se repetiu.
+  const lineFirstOrd = new Map();
+  for (const g of S.groups) {
+    const key = (g.cat||'') + '||' + (g.line||'');
+    if (!lineFirstOrd.has(key) || g._ord < lineFirstOrd.get(key)) lineFirstOrd.set(key, g._ord);
+  }
   res = [...res].sort((a,b) => {
     if (sort === 'alpha') return catRank(a.cat) - catRank(b.cat) || a.name.localeCompare(b.name, 'pt');
     // "Natal e Festiva" sempre por último (categoria sazonal)
@@ -774,6 +784,11 @@ function applyAll() {
       const sa = SELO_ORD[a.selo || ''] ?? 99;
       const sb = SELO_ORD[b.selo || ''] ?? 99;
       if (sa !== sb) return sa - sb;
+    }
+    if (a.line !== b.line) {
+      const la = lineFirstOrd.get((a.cat||'')+'||'+(a.line||'')) ?? a._ord;
+      const lb = lineFirstOrd.get((b.cat||'')+'||'+(b.line||'')) ?? b._ord;
+      if (la !== lb) return la - lb;
     }
     return a._ord - b._ord;
   });
