@@ -805,6 +805,11 @@ function matchGroup(g, qn) {
       const pn = norm(item.pn || '');
       if (pn === qn || pn.startsWith(qn + '.') || pn.startsWith(qn + '-')) return true;
       if (qn.includes('.') && pn.startsWith(qn)) return true;
+      // busca tambem dentro de modelo e variacao, nao so no nome do card
+      // (ex.: digitar "20A" ou "Cinza" acha o card mesmo se isso nao
+      // aparecer no titulo do produto_base)
+      if (item.modelo && norm(item.modelo).includes(qn)) return true;
+      if (item.variacao && norm(item.variacao).includes(qn)) return true;
     }
   }
   return false;
