@@ -114,6 +114,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;color:inhe
 .sec-head .sec-n{font-size:11px;color:var(--txt3);background:var(--surf2);padding:2px 8px;border-radius:10px;font-weight:600}
 .sub-head{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin:14px 0 4px;padding-bottom:5px;border-bottom:1px solid var(--brd)}
 .sub-head h3{font-family:var(--fb);font-size:13px;font-weight:600;color:var(--txt2);margin:0;text-transform:uppercase;letter-spacing:.4px}
+.sub-head h3 .sub-cat{color:var(--txt3);font-weight:500}
 .sub-head .sub-n{font-size:10px;color:var(--txt3);font-weight:600}
 
 /* ── CARD ── */
@@ -860,7 +861,7 @@ function renderBatch() {
         const n = S.visible.filter(x => (x.cat||'Outros') === cat && (x.line||'') === line).length;
         const sh = document.createElement('div');
         sh.className = 'sub-head';
-        sh.innerHTML = `<h3>${esc(line)}</h3><span class="sub-n">${n}</span>`;
+        sh.innerHTML = `<h3><span class="sub-cat">${esc(cat)} &gt; </span>${esc(line)}</h3><span class="sub-n">${n}</span>`;
         frag.appendChild(sh);
         S.lastLine = line;
       }
