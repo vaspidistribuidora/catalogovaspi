@@ -91,6 +91,14 @@ $json | Group-Object produto_base, modelo | ForEach-Object {
 if (-not $pnBug) { Write-Host "  OK - todo modelo usa 1 base de PN so" } else { $problemas++ }
 Write-Host ""
 
+# NOTA: cheguei a testar um check adicional (modelos diferentes do mesmo
+# produto_base compartilhando a mesma base) mas removi -- boa parte do
+# catalogo legado usa modelo=tamanho/especificacao sem separar PN por
+# modelo, e isso NAO e bug, e so um estilo de numeracao antigo que a
+# renumeracao completa (REGRA 8, ainda nao pedida) vai resolver quando
+# for a hora. Verificar isso manualmente so faz sentido pros grids que
+# a sessao atual esta mexendo ativamente, nao pro catalogo inteiro.
+
 # ---- 4) PN duplicado no catalogo inteiro ----
 Write-Host "--- 4) PN duplicado ---"
 $dupPn = $json | Group-Object pn | Where-Object { $_.Count -gt 1 }
