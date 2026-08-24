@@ -171,6 +171,7 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;color:inhe
 .card-selo.selo-safira{background:#0f8b8d}
 .card-selo.selo-lisse{background:#1e5fb3}
 .card-selo.selo-jeri{background:#d97706}
+.card-selo.selo-sx-cj{background:#22c55e}
 .mpn-label{font-family:var(--fd);font-size:13px;color:rgba(255,255,255,.7);letter-spacing:.3px;margin-bottom:1px}
 .mname{font-family:var(--fd);font-size:22px;color:#fff;letter-spacing:.3px;line-height:1.15}
 .mmeta{font-size:11px;color:rgba(255,255,255,.6);margin-top:4px}
@@ -763,7 +764,7 @@ function applyAll() {
   if (q) { const qn=norm(q.trim()); res = res.filter(g => matchGroup(g, qn)); }
   // ordem dos selos dentro de "Instalação Residencial":
   // sem selo (0) → Ideale (1) → Slim (2) → Lisse (3)
-  const SELO_ORD = { '': 0, 'Slim': 1, 'Safira': 2, 'Lisse': 3, 'Ideale': 4, 'Jeri': 5 };
+  const SELO_ORD = { '': 0, 'Slim': 1, 'Safira': 2, 'Lisse': 3, 'Ideale': 4, 'Jeri': 5, 'SX CJ': 6 };
   // Garante que todo subgrupo (categoria+linha) fique contíguo na tela, mesmo
   // que os itens dele não estejam em sequência dentro do produtos.json (ex.:
   // um script de reclassificação mexeu só em alguns códigos espalhados pelo
@@ -886,7 +887,7 @@ function makeCard(g, idx) {
   ].filter(Boolean).join('');
   el.innerHTML = `
     <div class="cimg">
-      ${g.selo ? `<span class="card-selo selo-${g.selo.toLowerCase()}">${esc(g.selo)}</span>` : ''}
+      ${g.selo ? `<span class="card-selo selo-${g.selo.toLowerCase().replace(/\s+/g,'-')}">${esc(g.selo)}</span>` : ''}
       ${src ? `<img class="lz" data-src="${src}" alt="${esc(g.name)}" width="300" height="300">` : phH()}
       ${tagsHTML ? `<div class="card-tags">${tagsHTML}</div>` : ''}
       ${tv > 1 ? `<span class="pb-vars">${tv}</span>` : ''}
@@ -1028,7 +1029,7 @@ function renderFilterDrawer() {
   const validSeloGroups = validTipoGroups.filter(g => !S.pf.tipos.size || S.pf.tipos.has(g.tipo));
   const selos = [...new Set(validSeloGroups.map(g=>g.selo).filter(Boolean))].sort();
   if (selos.length) {
-    const SELO_COLORS = { Ideale: '#6b3fcc', Slim: '#1a7a35', Lisse: '#1e5fb3', Safira: '#0f8b8d', Jeri: '#d97706' };
+    const SELO_COLORS = { Ideale: '#6b3fcc', Slim: '#1a7a35', Lisse: '#1e5fb3', Safira: '#0f8b8d', Jeri: '#d97706', 'SX CJ': '#22c55e' };
     document.getElementById('filtSelos').innerHTML = selos.map(s => {
       const n = baseGroups.filter(g => g.selo === s && matches(g, 'selos')).length;
       const checked = S.pf.selos.has(s);

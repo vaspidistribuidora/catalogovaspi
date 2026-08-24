@@ -948,6 +948,7 @@ tr.row-edit td{background:#f4f0ff}
           <option value="Lisse">Linha Lisse (azul)</option>
           <option value="Ideale">Linha Ideale (roxo)</option>
           <option value="Jeri">Linha Jeri (laranja)</option>
+          <option value="SX CJ">SX CJ (verde)</option>
         </select>
       </div>
     </div>
@@ -1897,7 +1898,7 @@ const Cur = {
       tb.innerHTML = visible.map(i => {
         const sel = this.selected.has(i.pn);
         const noGrid = !!i.no_grid;
-        const seloHTML = i.selo ? `<span style="display:inline-block;font-size:9px;font-weight:700;color:#fff;padding:2px 6px;border-radius:3px;background:${i.selo==='Ideale'?'#6b3fcc':i.selo==='Slim'?'#1a7a35':i.selo==='Safira'?'#0f8b8d':i.selo==='Lisse'?'#1e5fb3':i.selo==='Jeri'?'#d97706':'#666'}">${esc(i.selo)}</span>` : '';
+        const seloHTML = i.selo ? `<span style="display:inline-block;font-size:9px;font-weight:700;color:#fff;padding:2px 6px;border-radius:3px;background:${i.selo==='Ideale'?'#6b3fcc':i.selo==='Slim'?'#1a7a35':i.selo==='Safira'?'#0f8b8d':i.selo==='Lisse'?'#1e5fb3':i.selo==='Jeri'?'#d97706':i.selo==='SX CJ'?'#22c55e':'#666'}">${esc(i.selo)}</span>` : '';
         return `<tr class="${sel?'sel':''} ${noGrid?'no-grid':''}" data-pn="${esc(i.pn)}">
           <td><input type="checkbox" class="cur-row-chk" ${sel?'checked':''}></td>
           <td class="cur-pn">${esc(i.pn)}</td>
@@ -2616,8 +2617,8 @@ const Vit = {
     const cod = this.imgCod(g);
     return (g.items||[]).find(i => String(i.codigo_principal||'').trim() === cod) || (g.items||[])[0] || {};
   },
-  SELO_COLOR:{Slim:'#1a7a35',Safira:'#0f8b8d',Lisse:'#1e5fb3',Ideale:'#6b3fcc',Jeri:'#d97706'},
-  SELO_ORD:{'':0,'Slim':1,'Safira':2,'Lisse':3,'Ideale':4,'Jeri':5},
+  SELO_COLOR:{Slim:'#1a7a35',Safira:'#0f8b8d',Lisse:'#1e5fb3',Ideale:'#6b3fcc',Jeri:'#d97706','SX CJ':'#22c55e'},
+  SELO_ORD:{'':0,'Slim':1,'Safira':2,'Lisse':3,'Ideale':4,'Jeri':5,'SX CJ':6},
   CAT_ORDER:{'Material Elétrico':1,'Iluminação':2,'Lâmpadas e Fontes':3,'Tubos e Conexões':4,'Acessórios':5,'Ferramentas':6,'Ventilação':7,'Antenas e Áudio/Vídeo':8,'Natal e Festiva':99},
   _lineMin:{},   // min _ord por "categoria||linha" (calculado em renderCards)
 
