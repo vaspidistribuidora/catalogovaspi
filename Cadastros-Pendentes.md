@@ -29,3 +29,17 @@ como eu tinha suposto por engano na primeira análise). Usuário deu os
 códigos, reativei e organizei como "Lâmpada Vapor Ovoide", modelo
 Sódio/Mercúrio: 0004301 (Sódio 70W), 0004300 (Sódio 250W), 0004288
 (Mercúrio 80W), 0004287 (Mercúrio 125W).
+
+## Pendente Retro Metal — Bronze
+
+Produto_base novo, ainda sem nenhum item cadastrado (nem ativo nem em
+removidos.json) — procurei em todo o catálogo e não achei nenhum
+código com esse nome. Precisa de 2 itens (1 Metro e 2 Metros), iguais
+aos outros 6 grids de cor já organizados (Cobre, Cobre Envelhecido,
+Cromado, Dourado, Latonado, Niquelado).
+
+Origem: pedido do usuário em 25/08/2026 ("O que temos é: Niquelado,
+Cromado, latonado, cobre envelhecido, cobre, Dourado, Bronze").
+Quando tiver os códigos, produto_base = "Pendente Retro Metal
+Bronze", modelo = "1 Metro" / "2 Metros", variação vazia (mesmo
+padrão dos outros).
