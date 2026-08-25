@@ -339,6 +339,13 @@ button{cursor:pointer;border:none;background:none;font-family:inherit;color:inhe
 #previewBanner{position:fixed;top:0;left:0;right:0;background:#6b3fcc;color:#fff;padding:8px 14px;font-size:12px;font-weight:600;text-align:center;z-index:400;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 #previewBanner strong{font-weight:700}
 body:has(#previewBanner) .hdr{margin-top:34px}
+
+/* Voltar ao topo */
+.back-top{position:fixed;right:16px;bottom:24px;width:42px;height:42px;border-radius:50%;background:var(--red);color:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.28);cursor:pointer;z-index:80;opacity:0;pointer-events:none;transform:translateY(12px);transition:opacity .2s,transform .2s,background .15s}
+.back-top.v{opacity:1;pointer-events:auto;transform:translateY(0)}
+.back-top:hover{background:var(--red-d)}
+.back-top svg{width:20px;height:20px}
+@media (max-width:640px){.back-top{right:12px;bottom:calc(16px + env(safe-area-inset-bottom))}}
 </style>
 <script src="produtos.js"></script>
 </head>
@@ -447,6 +454,11 @@ body:has(#previewBanner) .hdr{margin-top:34px}
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- VOLTAR AO TOPO -->
+<button class="back-top" id="backTop" aria-label="Voltar ao topo" title="Voltar ao topo">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
 
 <!-- DRAWER DE FILTROS -->
 <div class="filt-ovl" id="filtOvl"></div>
@@ -1214,8 +1226,12 @@ const deb = (fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(.
 async function init() {
   // ORDEM DE CARGA:
   // 1) localStorage 'vaspi_catalogo_preview' — alterações locais do admin (mesma origin)
-  // 2) window.PRODUTOS — carregado via <script src="produtos.js">  (funciona em file://)
-  // 3) fetch produtos.json — em servidor
+  // 2) fetch produtos.json SEMPRE FRESCO (sem cache) — fonte principal em produção.
+  //    Sem isso, navegadores (e principalmente o modo "adicionar à tela de início"
+  //    do iPhone, que guarda cache de forma mais agressiva que uma aba normal)
+  //    podem travar numa cópia antiga do catálogo por dias.
+  // 3) window.PRODUTOS — carregado via <script src="produtos.js"> (fallback pra
+  //    file://, onde fetch de arquivo local é bloqueado por CORS)
   // 4) Firebase — produção
   let items = [];
   let isPreview = false;
@@ -1232,17 +1248,17 @@ async function init() {
     }
   } catch(e) {}
 
-  // 2) window.PRODUTOS
-  if (!items.length && window.PRODUTOS && window.PRODUTOS.length) {
-    items = window.PRODUTOS;
-  }
-
-  // 3) fetch produtos.json
+  // 2) fetch produtos.json sempre fresco
   if (!items.length) {
     try {
-      const r = await fetch('produtos.json');
+      const r = await fetch('produtos.json?t=' + Date.now(), { cache: 'no-store' });
       if (r.ok) items = await r.json();
-    } catch(e) { console.warn('produtos.json (fetch) indisponível, tentando Firebase…'); }
+    } catch(e) { console.warn('produtos.json (fetch) indisponível, tentando window.PRODUTOS…'); }
+  }
+
+  // 3) window.PRODUTOS (fallback file://)
+  if (!items.length && window.PRODUTOS && window.PRODUTOS.length) {
+    items = window.PRODUTOS;
   }
 
   // 4) Firebase
@@ -1370,6 +1386,13 @@ async function init() {
   document.getElementById('cartClear').addEventListener('click', ()=>{
     if (confirm('Esvaziar o carrinho?')) Cart.clear();
   });
+
+  // ── VOLTAR AO TOPO ──
+  const backTop = document.getElementById('backTop');
+  window.addEventListener('scroll', deb(()=>{
+    backTop.classList.toggle('v', window.scrollY > 600);
+  }, 100), { passive: true });
+  backTop.addEventListener('click', ()=>window.scrollTo({ top: 0, behavior: 'smooth' }));
 
   // ── delegação de eventos: controles de quantidade no MODAL ──
   document.getElementById('mBody').addEventListener('click', e => {
