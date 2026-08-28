@@ -50,7 +50,11 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--txt);font-family:var(--fb);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+/* touch-action:manipulation evita zoom acidental por duplo toque (2
+   cliques rápidos sem querer) sem desativar o zoom por pinça, que
+   continua liberado — importante pra clientes com dificuldade de
+   leitura de texto pequeno. */
+body{background:var(--bg);color:var(--txt);font-family:var(--fb);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased;touch-action:manipulation}
 img{display:block;max-width:100%}
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
 
