@@ -44,22 +44,10 @@ Quando tiver os códigos, produto_base = "Pendente Retro Metal
 Bronze", modelo = "1 Metro" / "2 Metros", variação vazia (mesmo
 padrão dos outros).
 
-## Quadro de Distribuição com Kit Barramento — Sobrepor 70A/225A
+## Quadro de Distribuição com Kit Barramento — RESOLVIDO em 02/09/2026
 
-Código **0008131** ("QUADRO DIST SOBREPOR 570 DISJ 225A C/KIT
-BARRAMENTO TRIF", print da tela do ERP em 02/09/2026) — o "570"
-provavelmente é erro de digitação/leitura (o Embutido tem exatamente
-"70 DISJ 225A" na mesma faixa), mas o usuário pediu pra checar no
-sistema deles antes de decidir. Não cadastrado ainda.
-
-Os outros 9 códigos da mesma leva já foram cadastrados em 02/09/2026
-como produto_base "Quadro de Distribuição com Kit Barramento",
-modelo "Trifásico - Embutido" (base PN 1182, 6 itens) e "Trifásico -
-Sobrepor" (base PN 1192, 3 itens: 0008711 44A/100A, 0008726 44A/150A,
-0008727 56A/225A).
-
-Quando o usuário confirmar o código 0008131: se for realmente "70"
-(duplicata do Embutido 70/225A só que versão Sobrepor), vira
-`1192.04`, variação "70 Disjuntores 225A". Se for outra coisa (570
-disjuntores de verdade), perguntar como classificar antes de
-cadastrar.
+Código 0008131 confirmado pelo usuário como "Sobrepor 70" (o "570" da
+tela do ERP era mesmo erro de digitação/leitura). Cadastrado como
+`1192.04`, variação "70 Disjuntores 225A" — checado antes de aplicar
+que não duplicava nada (nem código, nem PN, nem variação já existente).
+Grid "Trifásico - Sobrepor" completo agora com 4 itens.
