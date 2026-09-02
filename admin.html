@@ -1003,6 +1003,29 @@ tr.row-edit td{background:#f4f0ff}
 
 const PASSWORD = 'vaspi1244';
 
+// busca produtos.js sempre fresco, contornando o cache de CDN do GitHub Pages
+// (o Pages ignora query-string no cache-key, entao "?t=timestamp" sozinho nao
+// garante nada fresco - às vezes fica preso em uma versao velha por muito
+// tempo). Tenta primeiro o raw.githubusercontent.com (CDN separada, cache
+// bem mais curto e nao trava do mesmo jeito); só cai pro produtos.js local
+// (relativo, mesma origem) se a busca no GitHub falhar por qualquer motivo.
+async function fetchProdutosFresco() {
+  const tentativas = [
+    'https://raw.githubusercontent.com/vaspidistribuidora/catalogovaspi/main/produtos.js?t=' + Date.now(),
+    'produtos.js?t=' + Date.now(),
+  ];
+  for (const url of tentativas) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const t = await r.text();
+      const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
+      if (arr && arr.length) return arr;
+    } catch (e) { /* tenta a proxima */ }
+  }
+  return null;
+}
+
 // ── DB (Firebase) ─────────────────────────────────────
 const DB = {
   _cache: null,
@@ -1020,12 +1043,8 @@ const DB = {
       return this._cache;
     }
     // busca o arquivo SEMPRE FRESCO (não confia no cache do <script src>)
-    try {
-      const r = await fetch('produtos.js?t=' + Date.now(), { cache: 'no-store' });
-      const t = await r.text();
-      const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
-      if (arr.length) { this._cache = arr; return this._cache; }
-    } catch (e) {}
+    const arr = await fetchProdutosFresco();
+    if (arr) { this._cache = arr; return this._cache; }
     if (window.PRODUTOS && window.PRODUTOS.length) {
       this._cache = JSON.parse(JSON.stringify(window.PRODUTOS));
       return this._cache;
@@ -2489,14 +2508,8 @@ const Vit = {
 
   // carrega o produtos.js SEMPRE FRESCO (sem cache) como dados LOCAIS, sem publicar
   async loadFromFile() {
-    let items = null;
-    try {
-      const r = await fetch('produtos.js?t=' + Date.now(), { cache: 'no-store' });
-      const t = await r.text();
-      items = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
-    } catch (e) {
-      if (window.PRODUTOS && window.PRODUTOS.length) items = JSON.parse(JSON.stringify(window.PRODUTOS));
-    }
+    let items = await fetchProdutosFresco();
+    if (!items && window.PRODUTOS && window.PRODUTOS.length) items = JSON.parse(JSON.stringify(window.PRODUTOS));
     if (!items || !items.length) { toast('Não consegui ler o produtos.js da pasta.', 'err'); return; }
 
     // trava de seguranca: se tem edicao local nao exportada, baixa um backup
