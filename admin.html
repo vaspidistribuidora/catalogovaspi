@@ -2498,7 +2498,25 @@ const Vit = {
       if (window.PRODUTOS && window.PRODUTOS.length) items = JSON.parse(JSON.stringify(window.PRODUTOS));
     }
     if (!items || !items.length) { toast('Não consegui ler o produtos.js da pasta.', 'err'); return; }
-    if (!confirm(`Carregar o catálogo do arquivo (${items.length} itens, versão atual) como dados LOCAIS?\n\nSubstitui sua edição local atual e NÃO publica no Firebase — você organiza aqui e publica quando quiser.`)) return;
+
+    // trava de seguranca: se tem edicao local nao exportada, baixa um backup
+    // AUTOMATICO antes de deixar apagar (evita perder foto/ordem por engano
+    // ao clicar "Carregar do arquivo" com trabalho pendente).
+    if (DB.hasLocalChanges()) {
+      const seguir = confirm(
+        '⚠️ Você tem edições locais (fotos, ordem dos cards) que ainda NÃO foram exportadas.\n\n' +
+        'Carregar do arquivo agora vai APAGAR essas edições pra sempre.\n\n' +
+        'Clique OK pra eu baixar um backup de segurança AGORA com o que está salvo ' +
+        'localmente (assim nada se perde), ou Cancelar pra voltar e exportar você mesmo primeiro.'
+      );
+      if (!seguir) return;
+      Cur._itemsRef = this._items;  // garante que o export pega o estado local atual, nao um antigo
+      Cur.exportJS();
+      if (!confirm('Backup baixado na pasta Downloads. Confirma que quer descartar as edições locais e carregar a versão do arquivo agora?')) return;
+    } else {
+      if (!confirm(`Carregar o catálogo do arquivo (${items.length} itens, versão atual) como dados LOCAIS?\n\nSubstitui sua edição local atual e NÃO publica no Firebase — você organiza aqui e publica quando quiser.`)) return;
+    }
+
     await DB.setItems(items, { toFirebase: false });  // só local
     DB._cache = items; this._items = items; Cur._itemsRef = items;
     this.refreshFilters(); this.refreshLineFilter(); this.renderCards();
