@@ -387,6 +387,7 @@ tr.row-edit td{background:#f4f0ff}
   <div style="flex:1">
     <strong style="color:#6b3fcc">● Você tem alterações locais não publicadas</strong>
     <div style="font-size:11px;color:var(--txt2);margin-top:2px">As mudanças estão salvas no seu navegador. Visualize no catálogo antes de publicar.</div>
+    <div style="font-size:11px;margin-top:2px" id="curPublishBarTs"></div>
   </div>
   <button class="btn btn-ghost" id="curPreview">👁 Visualizar no catálogo</button>
   <button class="btn btn-ghost" id="curExportLocal">↓ Baixar produtos.js</button>
@@ -2277,6 +2278,27 @@ const Cur = {
     if (sb) {
       if (has) { sb.className = 'sync-badge sync-local'; sb.innerHTML = '<span class="sync-dot"></span>Alterações locais'; }
       else { sb.className = 'sync-badge sync-ok'; sb.innerHTML = '<span class="sync-dot"></span>Sem alterações'; }
+    }
+    // mostra HÁ QUANTO TEMPO os dados locais foram salvos, bem visível —
+    // essa idade escondida foi a causa de varios "sumiu minha foto" que
+    // na verdade eram so cache velho nunca recarregado.
+    const tsEl = document.getElementById('curPublishBarTs');
+    if (tsEl) {
+      const local = DB._readLocal();
+      if (has && local && local.ts) {
+        const ms = Date.now() - local.ts;
+        const min = Math.floor(ms / 60000), hrs = Math.floor(ms / 3600000), dias = Math.floor(ms / 86400000);
+        let txt;
+        if (dias >= 1) txt = `há ${dias} dia${dias > 1 ? 's' : ''}`;
+        else if (hrs >= 1) txt = `há ${hrs}h`;
+        else txt = `há ${Math.max(min, 1)} min`;
+        const velho = ms > 3 * 3600000; // mais de 3h: provavelmente esquecido, destaca em vermelho
+        tsEl.textContent = `Salvo ${txt}${velho ? ' — se não reconhece essa edição, clique em "Carregar do arquivo" na Vitrine' : ''}`;
+        tsEl.style.color = velho ? '#c0392b' : '';
+        tsEl.style.fontWeight = velho ? '700' : '';
+      } else {
+        tsEl.textContent = '';
+      }
     }
   },
   async publish() {
