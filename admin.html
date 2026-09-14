@@ -1018,12 +1018,13 @@ async function fetchProdutosFresco() {
   for (const url of tentativas) {
     try {
       const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) continue;
+      if (!r.ok) { console.warn('fetchProdutosFresco: HTTP', r.status, 'em', url); continue; }
       const t = await r.text();
       const arr = JSON.parse(t.slice(t.indexOf('['), t.lastIndexOf(']') + 1));
-      if (arr && arr.length) return arr;
-    } catch (e) { /* tenta a proxima */ }
+      if (arr && arr.length) { console.log('fetchProdutosFresco: OK,', arr.length, 'itens de', url); return arr; }
+    } catch (e) { console.warn('fetchProdutosFresco: falhou em', url, e); }
   }
+  console.error('fetchProdutosFresco: TODAS as fontes falharam');
   return null;
 }
 
@@ -2535,19 +2536,22 @@ const Vit = {
     if (!items || !items.length) { toast('Não consegui ler o produtos.js da pasta.', 'err'); return; }
 
     // trava de seguranca: se tem edicao local nao exportada, baixa um backup
-    // AUTOMATICO antes de deixar apagar (evita perder foto/ordem por engano
-    // ao clicar "Carregar do arquivo" com trabalho pendente).
+    // AUTOMATICO e SILENCIOSO antes de perguntar qualquer coisa (evita perder
+    // foto/ordem por engano ao clicar "Carregar do arquivo" com trabalho
+    // pendente). So 1 confirm() no total agora - 2 confirms() seguidos podiam
+    // fazer o navegador bloquear o segundo dialog silenciosamente (o clique
+    // parecia "não fazer nada" e o timestamp nunca era atualizado).
     if (DB.hasLocalChanges()) {
+      try {
+        Cur._itemsRef = this._items;  // garante que o export pega o estado local atual, nao um antigo
+        Cur.exportJS();
+      } catch (e) { console.error('backup automatico falhou:', e); }
       const seguir = confirm(
         '⚠️ Você tem edições locais (fotos, ordem dos cards) que ainda NÃO foram exportadas.\n\n' +
-        'Carregar do arquivo agora vai APAGAR essas edições pra sempre.\n\n' +
-        'Clique OK pra eu baixar um backup de segurança AGORA com o que está salvo ' +
-        'localmente (assim nada se perde), ou Cancelar pra voltar e exportar você mesmo primeiro.'
+        'Já baixei um backup de segurança na pasta Downloads com o que está salvo localmente (nada se perde).\n\n' +
+        'Confirma que quer descartar essas edições locais e carregar a versão do arquivo agora?'
       );
       if (!seguir) return;
-      Cur._itemsRef = this._items;  // garante que o export pega o estado local atual, nao um antigo
-      Cur.exportJS();
-      if (!confirm('Backup baixado na pasta Downloads. Confirma que quer descartar as edições locais e carregar a versão do arquivo agora?')) return;
     } else {
       if (!confirm(`Carregar o catálogo do arquivo (${items.length} itens, versão atual) como dados LOCAIS?\n\nSubstitui sua edição local atual e NÃO publica no Firebase — você organiza aqui e publica quando quiser.`)) return;
     }
