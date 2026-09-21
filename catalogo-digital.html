@@ -537,10 +537,11 @@ const isTop   = i => String(i.tag_top||'').toLowerCase().startsWith('s');
 
 /* ── CARRINHO ── */
 const Cart = {
-  KEY: 'vaspi_cart_v1',
+  KEY: 'vaspi_cart_v2', // v2 (set/2026): PNs foram renumerados; carrinho v1 guardava PN antigo
   items: {}, // { [pn]: { pn, qty, name, variacao, modelo, groupId, mainPn } }
   load() {
     try {
+      localStorage.removeItem('vaspi_cart_v1');
       const raw = localStorage.getItem(this.KEY);
       this.items = raw ? JSON.parse(raw) : {};
     } catch(e) { this.items = {}; }

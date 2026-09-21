@@ -51,6 +51,26 @@ categoria → linha (subcategoria) → produto_base → modelo → variação
 produto_base + modelo tem que usar a mesma *base* de PN (a parte antes
 do ponto). Modelos diferentes podem (e devem) usar bases diferentes.
 
+**Numeração de PN (desde 21/09/2026, Backup 95):** cada categoria tem um
+bloco próprio de 1000 PNs e cada grid ocupa 1 base dentro do bloco, na
+ordem em que o grid aparece no `produtos.json` (= ordem da Vitrine):
+
+| Categoria | Bloco | | Categoria | Bloco |
+|---|---|---|---|---|
+| Material Elétrico | 1001-1999 | | Acessórios | 6001-6999 |
+| Iluminação | 2001-2999 | | Antenas e Áudio/Vídeo | 7001-7999 |
+| Lâmpadas e Fontes | 3001-3999 | | Ventilação | 8001-8999 |
+| Tubos e Conexões | 4001-4999 | | Natal e Festiva | 9001-9999 |
+| Ferramentas | 5001-5999 | | | |
+
+Os sufixos `.01`, `.02`... seguem a ordem dos itens dentro do grid. Grid
+novo = próxima base livre do bloco da categoria (o maior PN de cada bloco
+está em `Backups/Backup 95/o-que-mudou.txt`). Se um grid for **movido de
+posição** na Vitrine, o PN dele NÃO se reajusta sozinho — a numeração só
+volta a bater com a posição se rodarmos uma nova renumeração. O site
+público não ordena cards por PN (usa a posição no array), então isso só
+afeta a leitura dos números, não a tela.
+
 ## O script de auditoria — rodar sempre antes de publicar
 
 ```bash
@@ -65,14 +85,15 @@ duplicados, produto sozinho no lugar errado):
 3. Um mesmo produto_base+modelo não pode usar mais de uma base de PN.
 4. Nenhum PN pode se repetir no catálogo inteiro.
 
-Sai com erro (exit 1) se achar problema. **Hoje ele sempre acusa 2
-problemas que já são conhecidos e aceitos** (não são bugs novos):
+Sai com erro (exit 1) se achar problema. **Hoje ele sempre acusa 1
+problema que já é conhecido e aceito** (não é bug novo):
 
 - `Interruptor Simples` existe em duas linhas (Caixas e Canaletas / SX,
   e Instalação Residencial) — são produtos genuinamente diferentes com
   nome igual, não duplicata.
-- 10 produto_base antigos com a base de PN dividida entre modelos
-  (backlog de antes desta limpeza, listados na seção de pendências).
+
+(Até 21/09/2026 eram 2: o outro era o backlog de 10 produto_base com a
+base de PN dividida, resolvido pela renumeração completa.)
 
 Se o audit acusar **qualquer outra coisa**, é bug de verdade — não
 publicar antes de corrigir.
@@ -84,7 +105,7 @@ publicar antes de corrigir.
    ANTES de aplicar, e escrever o `o-que-mudou.txt` explicando a mudança.
 3. Aplicar na pasta real.
 4. Rodar `auditar_catalogo.ps1` — só publicar se o resultado bater com o
-   esperado (2 problemas conhecidos, nada novo).
+   esperado (1 problema conhecido — Interruptor Simples —, nada novo).
 5. `git add` + `git commit` + `git push origin main` — o GitHub Pages
    publica sozinho em seguida (pode levar até ~10 min pra propagar pra
    quem já tinha o site aberto, é cache do próprio GitHub Pages, não dá
@@ -161,14 +182,10 @@ Ver `Cadastros-Pendentes.md` — hoje contém:
 - **Pendente Retro Metal — Bronze**: falta cadastrar 2 itens (1 Metro
   e 2 Metros), mesmo padrão dos outros 6 grids de cor já organizados.
 
-### 2. Backlog de PN dividido (10 produto_base antigos)
-Grupos onde o mesmo modelo usa 2 bases de PN diferentes — erro antigo,
-de antes desta limpeza, aceito como backlog até o usuário pedir a
-renumeração completa:
-Caixa de Passagem Plástica (Embutir e Sobrepor), Caixa com Tomada 20A
-(Sobrepor), Bloco de Contato, Refletor Led com Placa Solar, Luminária
-Pública (Sem Relé), Luminária Galpão (UFO), Luminária de Emergência
-(Farol), Acabamento de Perfil Sobrepor, Controle para Fita de Led.
+### 2. Backlog de PN dividido — RESOLVIDO em 21/09/2026
+Os 10 produto_base que usavam 2 bases de PN no mesmo modelo foram
+corrigidos pela renumeração completa (Backup 95). O check 3 da auditoria
+agora passa limpo.
 
 ### 3. Cards com modelo sem nome — aguardando decisão do usuário
 Levantamento feito, mas o usuário ainda não respondeu quais nomes dar
